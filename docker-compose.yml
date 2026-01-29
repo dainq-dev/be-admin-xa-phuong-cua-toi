@@ -7,15 +7,17 @@ services:
   #   restart: unless-stopped
   #   ports:
   #     - '5432:5432'
+  #   env_file:
+  #     - .env
   #   environment:
-  #     POSTGRES_USER: phuongxa
-  #     POSTGRES_PASSWORD: phuongxa_dev_password
-  #     POSTGRES_DB: phuongxa_db
+  #     POSTGRES_USER: ${POSTGRES_USER}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #     POSTGRES_DB: ${POSTGRES_DB}
   #   volumes:
   #     - postgres_data:/var/lib/postgresql/data
   #     - ./packages/backend/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql
   #   healthcheck:
-  #     test: ['CMD-SHELL', 'pg_isready -U phuongxa']
+  #     test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
   #     interval: 10s
   #     timeout: 5s
   #     retries: 5
@@ -26,24 +28,37 @@ services:
     restart: unless-stopped
     ports:
       - '6379:6379'
-    command: redis-server --appendonly yes --requirepass phuongxa_redis_password
+    env_file:
+      - .env
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ['CMD', 'redis-cli', '--raw', 'incr', 'ping']
+      test:
+        [
+          'CMD',
+          'redis-cli',
+          '-a',
+          '${REDIS_PASSWORD}',
+          'ping'
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Optional: Redis Commander (GUI for Redis)
   redis-commander:
     image: rediscommander/redis-commander:latest
     container_name: phuong-xa-redis-commander
     restart: unless-stopped
     ports:
-      - '8081:8081'
+      - '${REDIS_COMMANDER_PORT}:8081'
+    env_file:
+      - .env
     environment:
-      - REDIS_HOSTS=local:redis:6379:0:phuongxa_redis_password
+      REDIS_HOSTS: local:redis:6379:0:${REDIS_PASSWORD}
     depends_on:
       - redis
 
