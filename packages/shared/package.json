@@ -1,0 +1,35 @@
+{
+  "name": "@phuong-xa/shared",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Shared types and utilities for Phường Xã Của Tôi",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "import": "./dist/utils/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "shared",
+    "types",
+    "utils"
+  ],
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

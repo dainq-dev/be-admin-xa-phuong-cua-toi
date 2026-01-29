@@ -1,0 +1,576 @@
+// Prisma Schema for Phường Xã Của Tôi
+// Based on ideal-database.md
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ADMINISTRATIVE DIVISIONS (Multi-tenancy)
+// ============================================
+
+model Province {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(255)
+  code      String   @unique @db.VarChar(10)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  districts District[]
+  wards     Ward[]
+
+  @@map("provinces")
+}
+
+model District {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String   @db.VarChar(255)
+  code       String   @unique @db.VarChar(10)
+  provinceId String   @map("province_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  province Province @relation(fields: [provinceId], references: [id], onDelete: Cascade)
+  wards    Ward[]
+
+  @@index([provinceId])
+  @@map("districts")
+}
+
+model Ward {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @db.VarChar(255)
+  code        String   @unique @db.VarChar(10)
+  districtId  String   @map("district_id") @db.Uuid
+  provinceId  String   @map("province_id") @db.Uuid
+  contactInfo Json?    @map("contact_info") @db.JsonB
+  settings    Json     @default("{}") @db.JsonB
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  district           District            @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  province           Province            @relation(fields: [provinceId], references: [id], onDelete: Cascade)
+  users              User[]
+  wardSettings       WardSetting[]
+  newsArticles       NewsArticle[]
+  documents          Document[]
+  contacts           Contact[]
+  emergencyContacts  EmergencyContact[]
+  feedbackSubmissions FeedbackSubmission[]
+  pageThemes         PageTheme[]
+  uiComponents       UiComponent[]
+  featureFlags       FeatureFlag[]
+  analyticsEvents    AnalyticsEvent[]
+
+  @@index([districtId])
+  @@index([provinceId])
+  @@index([isActive])
+  @@map("wards")
+}
+
+model WardSetting {
+  id          String   @id @default(uuid()) @db.Uuid
+  wardId      String   @map("ward_id") @db.Uuid
+  key         String   @db.VarChar(100)
+  value       String?  @db.Text
+  dataType    String   @default("string") @map("data_type") @db.VarChar(20)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  ward Ward @relation(fields: [wardId], references: [id], onDelete: Cascade)
+
+  @@unique([wardId, key])
+  @@index([wardId])
+  @@index([key])
+  @@map("ward_settings")
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id          String    @id @default(uuid()) @db.Uuid
+  zaloId      String?   @unique @map("zalo_id") @db.VarChar(255)
+  email       String?   @unique @db.VarChar(255)
+  name        String    @db.VarChar(255)
+  avatarUrl   String?   @map("avatar_url") @db.Text
+  phoneNumber String?   @map("phone_number") @db.VarChar(20)
+  address     String?   @db.Text
+  wardId      String?   @map("ward_id") @db.Uuid
+  role        String    @default("citizen") @db.VarChar(20)
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
+
+  // Relations
+  ward             Ward?                @relation(fields: [wardId], references: [id], onDelete: SetNull)
+  sessions         UserSession[]
+  settings         UserSettings?
+  newsArticles     NewsArticle[]        @relation("AuthorArticles")
+  feedbackSubmissions FeedbackSubmission[] @relation("UserFeedbacks")
+  assignedFeedbacks FeedbackSubmission[]  @relation("AssignedFeedbacks")
+  feedbackHistory  FeedbackHistory[]
+  analyticsEvents  AnalyticsEvent[]
+  callLogs         CallLog[]
+  downloadLogs     DownloadLog[]
+
+  @@index([zaloId])
+  @@index([email])
+  @@index([wardId])
+  @@index([role])
+  @@index([isActive, deletedAt])
+  @@map("users")
+}
+
+model UserSession {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  token      String   @db.Text
+  deviceInfo Json?    @map("device_info") @db.JsonB
+  ipAddress  String?  @map("ip_address") @db.Inet
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
+model UserSettings {
+  id                  String   @id @default(uuid()) @db.Uuid
+  userId              String   @unique @map("user_id") @db.Uuid
+  theme               String   @default("light") @db.VarChar(20)
+  language            String   @default("vi") @db.VarChar(5)
+  notificationsEnabled Boolean @default(true) @map("notifications_enabled")
+  feedbackUpdates     Boolean  @default(true) @map("feedback_updates")
+  newsAlerts          Boolean  @default(true) @map("news_alerts")
+  emergencyAlerts     Boolean  @default(true) @map("emergency_alerts")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_settings")
+}
+
+// ============================================
+// NEWS & ARTICLES
+// ============================================
+
+model NewsArticle {
+  id          String    @id @default(uuid()) @db.Uuid
+  wardId      String    @map("ward_id") @db.Uuid
+  title       String    @db.VarChar(500)
+  slug        String    @unique @db.VarChar(500)
+  summary     String?   @db.Text
+  content     String    @db.Text
+  imageUrl    String?   @map("image_url") @db.Text
+  category    String    @db.VarChar(50)
+  authorId    String?   @map("author_id") @db.Uuid
+  viewCount   Int       @default(0) @map("view_count")
+  isFeatured  Boolean   @default(false) @map("is_featured")
+  isPinned    Boolean   @default(false) @map("is_pinned")
+  publishedAt DateTime? @map("published_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
+
+  // Relations
+  ward   Ward  @relation(fields: [wardId], references: [id], onDelete: Cascade)
+  author User? @relation("AuthorArticles", fields: [authorId], references: [id], onDelete: SetNull)
+  tags   NewsArticleTag[]
+
+  @@index([wardId, publishedAt(sort: Desc), deletedAt])
+  @@index([isFeatured, isPinned, deletedAt])
+  @@index([category, deletedAt])
+  @@index([slug])
+  @@map("news_articles")
+}
+
+model NewsTag {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.VarChar(100)
+  slug      String   @unique @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  articles NewsArticleTag[]
+
+  @@index([slug])
+  @@map("news_tags")
+}
+
+model NewsArticleTag {
+  articleId String   @map("article_id") @db.Uuid
+  tagId     String   @map("tag_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  article NewsArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag     NewsTag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+  @@index([articleId])
+  @@index([tagId])
+  @@map("news_article_tags")
+}
+
+// ============================================
+// OFFICIAL DOCUMENTS
+// ============================================
+
+model Document {
+  id             String    @id @default(uuid()) @db.Uuid
+  wardId         String    @map("ward_id") @db.Uuid
+  title          String    @db.VarChar(500)
+  slug           String    @unique @db.VarChar(500)
+  description    String?   @db.Text
+  category       String    @db.VarChar(50)
+  department     String?   @db.VarChar(255)
+  processingTime String?   @map("processing_time") @db.VarChar(100)
+  fee            String?   @db.VarChar(255)
+  downloadCount  Int       @default(0) @map("download_count")
+  viewCount      Int       @default(0) @map("view_count")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+
+  // Relations
+  ward           Ward                   @relation(fields: [wardId], references: [id], onDelete: Cascade)
+  steps          DocumentStep[]
+  requiredDocs   DocumentRequiredDoc[]
+  forms          DocumentForm[]
+  contactInfo    DocumentContactInfo[]
+
+  @@index([wardId, category, deletedAt])
+  @@index([slug])
+  @@map("documents")
+}
+
+model DocumentStep {
+  id            String   @id @default(uuid()) @db.Uuid
+  documentId    String   @map("document_id") @db.Uuid
+  stepOrder     Int      @map("step_order")
+  title         String   @db.VarChar(255)
+  description   String?  @db.Text
+  location      String?  @db.VarChar(255)
+  estimatedTime String?  @map("estimated_time") @db.VarChar(100)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, stepOrder])
+  @@map("document_steps")
+}
+
+model DocumentRequiredDoc {
+  id         String   @id @default(uuid()) @db.Uuid
+  documentId String   @map("document_id") @db.Uuid
+  name       String   @db.VarChar(255)
+  isRequired Boolean  @default(true) @map("is_required")
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@map("document_required_docs")
+}
+
+model DocumentForm {
+  id            String   @id @default(uuid()) @db.Uuid
+  documentId    String   @map("document_id") @db.Uuid
+  name          String   @db.VarChar(255)
+  fileType      String   @map("file_type") @db.VarChar(10)
+  fileUrl       String   @map("file_url") @db.Text
+  fileSize      Int?     @map("file_size")
+  downloadCount Int      @default(0) @map("download_count")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  document     Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  downloadLogs DownloadLog[]
+
+  @@index([documentId])
+  @@map("document_forms")
+}
+
+model DocumentContactInfo {
+  id         String   @id @default(uuid()) @db.Uuid
+  documentId String   @map("document_id") @db.Uuid
+  contactId  String   @map("contact_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  contact  Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([contactId])
+  @@map("document_contact_info")
+}
+
+// ============================================
+// CONTACTS
+// ============================================
+
+model Contact {
+  id             String    @id @default(uuid()) @db.Uuid
+  wardId         String    @map("ward_id") @db.Uuid
+  name           String    @db.VarChar(255)
+  position       String?   @db.VarChar(255)
+  department     String    @db.VarChar(50)
+  phoneNumber    String    @map("phone_number") @db.VarChar(20)
+  alternatePhone String?   @map("alternate_phone") @db.VarChar(20)
+  email          String?   @db.VarChar(255)
+  officeLocation String?   @map("office_location") @db.Text
+  workingHours   String?   @map("working_hours") @db.VarChar(255)
+  isEmergency    Boolean   @default(false) @map("is_emergency")
+  avatarUrl      String?   @map("avatar_url") @db.Text
+  zaloId         String?   @map("zalo_id") @db.VarChar(255)
+  displayOrder   Int       @default(0) @map("display_order")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+
+  // Relations
+  ward        Ward                   @relation(fields: [wardId], references: [id], onDelete: Cascade)
+  documents   DocumentContactInfo[]
+  callLogs    CallLog[]
+
+  @@index([wardId, department, deletedAt])
+  @@index([wardId, isEmergency, deletedAt])
+  @@index([displayOrder])
+  @@map("contacts")
+}
+
+model EmergencyContact {
+  id           String   @id @default(uuid()) @db.Uuid
+  wardId       String   @map("ward_id") @db.Uuid
+  title        String   @db.VarChar(100)
+  phoneNumber  String   @map("phone_number") @db.VarChar(20)
+  icon         String?  @db.VarChar(50)
+  color        String?  @db.VarChar(7)
+  description  String?  @db.Text
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  ward Ward @relation(fields: [wardId], references: [id], onDelete: Cascade)
+
+  @@index([wardId, displayOrder])
+  @@map("emergency_contacts")
+}
+
+// ============================================
+// FEEDBACK & COMPLAINTS
+// ============================================
+
+model FeedbackSubmission {
+  id                String    @id @default(uuid()) @db.Uuid
+  wardId            String    @map("ward_id") @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  category          String    @db.VarChar(50)
+  title             String    @db.VarChar(255)
+  description       String    @db.Text
+  locationLat       Decimal?  @map("location_lat") @db.Decimal(10, 8)
+  locationLng       Decimal?  @map("location_lng") @db.Decimal(11, 8)
+  locationAddress   String?   @map("location_address") @db.Text
+  status            String    @default("pending") @db.VarChar(20)
+  priority          String    @default("medium") @db.VarChar(20)
+  assignedTo        String?   @map("assigned_to") @db.Uuid
+  responseMessage   String?   @map("response_message") @db.Text
+  contactPreference String?   @map("contact_preference") @db.VarChar(20)
+  isUrgent          Boolean   @default(false) @map("is_urgent")
+  resolvedAt        DateTime? @map("resolved_at") @db.Timestamptz
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  ward         Ward               @relation(fields: [wardId], references: [id], onDelete: Cascade)
+  user         User               @relation("UserFeedbacks", fields: [userId], references: [id], onDelete: Cascade)
+  assignedUser User?              @relation("AssignedFeedbacks", fields: [assignedTo], references: [id], onDelete: SetNull)
+  photos       FeedbackPhoto[]
+  history      FeedbackHistory[]
+
+  @@index([wardId, status])
+  @@index([userId, status])
+  @@index([assignedTo])
+  @@index([locationLat, locationLng])
+  @@index([createdAt(sort: Desc)])
+  @@map("feedback_submissions")
+}
+
+model FeedbackPhoto {
+  id           String   @id @default(uuid()) @db.Uuid
+  feedbackId   String   @map("feedback_id") @db.Uuid
+  photoUrl     String   @map("photo_url") @db.Text
+  thumbnailUrl String?  @map("thumbnail_url") @db.Text
+  uploadOrder  Int      @default(0) @map("upload_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  feedback FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@index([feedbackId, uploadOrder])
+  @@map("feedback_photos")
+}
+
+model FeedbackHistory {
+  id         String   @id @default(uuid()) @db.Uuid
+  feedbackId String   @map("feedback_id") @db.Uuid
+  oldStatus  String?  @map("old_status") @db.VarChar(20)
+  newStatus  String   @map("new_status") @db.VarChar(20)
+  message    String?  @db.Text
+  changedBy  String?  @map("changed_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  feedback FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  user     User?              @relation(fields: [changedBy], references: [id], onDelete: SetNull)
+
+  @@index([feedbackId, createdAt(sort: Desc)])
+  @@index([changedBy])
+  @@map("feedback_history")
+}
+
+// ============================================
+// UI CUSTOMIZATION
+// ============================================
+
+model PageTheme {
+  id          String   @id @default(uuid()) @db.Uuid
+  wardId      String   @map("ward_id") @db.Uuid
+  pageKey     String   @map("page_key") @db.VarChar(50)
+  themeConfig Json     @map("theme_config") @db.JsonB
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  ward Ward @relation(fields: [wardId], references: [id], onDelete: Cascade)
+
+  @@unique([wardId, pageKey])
+  @@index([wardId, pageKey])
+  @@index([isActive])
+  @@map("page_themes")
+}
+
+model UiComponent {
+  id              String   @id @default(uuid()) @db.Uuid
+  wardId          String   @map("ward_id") @db.Uuid
+  pageKey         String   @map("page_key") @db.VarChar(50)
+  componentType   String   @map("component_type") @db.VarChar(50)
+  componentConfig Json     @map("component_config") @db.JsonB
+  displayOrder    Int      @default(0) @map("display_order")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  ward Ward @relation(fields: [wardId], references: [id], onDelete: Cascade)
+
+  @@index([wardId, pageKey, displayOrder])
+  @@index([isActive])
+  @@map("ui_components")
+}
+
+model FeatureFlag {
+  id          String   @id @default(uuid()) @db.Uuid
+  wardId      String   @map("ward_id") @db.Uuid
+  featureKey  String   @map("feature_key") @db.VarChar(100)
+  isEnabled   Boolean  @default(true) @map("is_enabled")
+  config      Json     @default("{}") @db.JsonB
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  ward Ward @relation(fields: [wardId], references: [id], onDelete: Cascade)
+
+  @@unique([wardId, featureKey])
+  @@index([wardId])
+  @@index([isEnabled])
+  @@map("feature_flags")
+}
+
+// ============================================
+// ANALYTICS & TRACKING
+// ============================================
+
+model AnalyticsEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  wardId     String?  @map("ward_id") @db.Uuid
+  eventType  String   @map("event_type") @db.VarChar(50)
+  entityType String?  @map("entity_type") @db.VarChar(50)
+  entityId   String?  @map("entity_id") @db.Uuid
+  metadata   Json?    @db.JsonB
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  ward Ward? @relation(fields: [wardId], references: [id], onDelete: SetNull)
+
+  @@index([eventType, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([wardId, createdAt(sort: Desc)])
+  @@index([entityType, entityId])
+  @@map("analytics_events")
+}
+
+model CallLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String?  @map("user_id") @db.Uuid
+  contactId    String?  @map("contact_id") @db.Uuid
+  phoneNumber  String   @map("phone_number") @db.VarChar(20)
+  callDuration Int?     @map("call_duration")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([contactId, createdAt(sort: Desc)])
+  @@map("call_logs")
+}
+
+model DownloadLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  formId     String?  @map("form_id") @db.Uuid
+  documentId String?  @map("document_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  user User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  form DocumentForm? @relation(fields: [formId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([formId, createdAt(sort: Desc)])
+  @@index([documentId, createdAt(sort: Desc)])
+  @@map("download_logs")
+}

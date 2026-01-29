@@ -1,0 +1,36 @@
+{
+  "name": "@phuong-xa/monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo for Phuong Xa Backend & Admin",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "dev:backend": "bun run --filter @phuong-xa/backend dev",
+    "dev:admin": "bun run --filter @phuong-xa/admin dev",
+    "build": "bun run --filter '*' build",
+    "build:backend": "bun run --filter @phuong-xa/backend build",
+    "build:admin": "bun run --filter @phuong-xa/admin build",
+    "test": "bun test",
+    "test:backend": "bun run --filter @phuong-xa/backend test",
+    "clean": "bun run --filter '*' clean && rm -rf node_modules",
+    "prisma:generate": "cd packages/backend && bunx prisma generate",
+    "prisma:migrate": "cd packages/backend && bunx prisma migrate dev",
+    "prisma:studio": "cd packages/backend && bunx prisma studio",
+    "prisma:seed": "cd packages/backend && bunx prisma db seed",
+    "type-check": "bun run --filter '*' type-check",
+    "lint": "bun run --filter '*' lint",
+    "format": "prettier --write \"packages/**/*.{ts,tsx,json,md}\""
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.13",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "bun": ">=1.0.0"
+  }
+}
