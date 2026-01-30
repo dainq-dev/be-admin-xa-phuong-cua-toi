@@ -114,6 +114,8 @@ export class Article {
       viewCount: this.data.viewCount,
       isFeatured: this.data.isFeatured,
       isPinned: this.data.isPinned,
+      status: this.data.status,
+      blocks: this.data.blocks as any, // Cast to any to avoid complex type issues for now, or use NewsBlock[]
       publishedAt: this.data.publishedAt,
       createdAt: this.data.createdAt,
       updatedAt: this.data.updatedAt,

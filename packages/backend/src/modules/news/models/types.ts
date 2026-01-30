@@ -4,6 +4,7 @@
  */
 
 import type { NewsArticle, NewsTag, User, Ward, NewsArticleTag } from '@prisma/client'
+import type { NewsBlock } from '@phuong-xa/shared'
 
 // ============================================
 // ENUMS & CONSTANTS
@@ -29,8 +30,10 @@ export interface CreateArticleInput {
   category: string
   isFeatured?: boolean
   isPinned?: boolean
+  status?: string // draft, published, etc
   publishedAt?: string
   tags?: string[]
+  blocks?: Record<string, unknown>[] // JSON blocks from request, validated at runtime
   wardId: string
   authorId: string
 }
@@ -43,7 +46,9 @@ export interface UpdateArticleInput {
   category?: string
   isFeatured?: boolean
   isPinned?: boolean
+  status?: string
   publishedAt?: string
+  blocks?: Record<string, unknown>[] // JSON blocks from request, validated at runtime
 }
 
 export interface NewsFiltersInput {
@@ -51,6 +56,7 @@ export interface NewsFiltersInput {
   category?: string
   isFeatured?: boolean
   isPinned?: boolean
+  status?: string // Filter by status (published, draft)
   search?: string
   limit: number
   offset: number
@@ -136,6 +142,8 @@ export interface ArticleResponse {
   viewCount: number
   isFeatured: boolean
   isPinned: boolean
+  status: string
+  blocks?: NewsBlock[]
   publishedAt: Date | null
   createdAt: Date
   updatedAt: Date
@@ -171,7 +179,9 @@ export interface CreateArticleData {
   category: string
   isFeatured?: boolean
   isPinned?: boolean
+  status?: string
   publishedAt: Date
+  blocks?: any // Prisma Json type
   wardId: string
   authorId: string
 }
@@ -188,7 +198,9 @@ export interface UpdateArticleData {
   category?: string
   isFeatured?: boolean
   isPinned?: boolean
+  status?: string
   publishedAt?: Date
+  blocks?: any // Prisma Json type
 }
 
 // ============================================

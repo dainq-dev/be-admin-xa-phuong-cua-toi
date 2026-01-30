@@ -1,34 +1,49 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Routes, Route } from 'react-router-dom'
+import { Suspense } from 'react'
+import RootLayout from './layouts'
+import { CaiDat, DangNhap, GopY, KhongTimThayTrang, NguoiDung, TaiLieu, TinTuc, TinTucEditor, TrangChu } from './views'
+import { PrivateRoute } from './components/PrivateRoute'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { Toaster } from './components/ui/toaster'
+import { Loader2 } from 'lucide-react'
+import { useAuthInit } from './hooks/useAuthInit'
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center h-screen">
+    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+  </div>
+)
 
 function App() {
-  const [count, setCount] = useState(0)
-
+  // Initialize auth state on mount
+  useAuthInit()
+  
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <ErrorBoundary>
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          {/* Public routes - No layout */}
+          <Route path="/dang-nhap" element={<DangNhap />} />
+
+          {/* Protected routes - With layout */}
+          <Route element={ <PrivateRoute> <RootLayout /> </PrivateRoute> } >
+            <Route path="/" element={<TrangChu />} />
+            <Route path="/tin-tuc" element={<TinTuc />} />
+            <Route path="/tin-tuc/tao-moi" element={<TinTucEditor />} />
+            <Route path="/tin-tuc/chinh-sua/:id" element={<TinTucEditor />} />
+            <Route path="/tai-lieu" element={<TaiLieu />} />
+            <Route path="/gop-y" element={<GopY />} />
+            <Route path="/nguoi-dung" element={<NguoiDung />} />
+            <Route path="/cai-dat" element={<CaiDat />} />
+          </Route>
+
+          {/* 404 */}
+          <Route path="*" element={<KhongTimThayTrang />} />
+        </Routes>
+      </Suspense>
+      <Toaster />
+    </ErrorBoundary>
   )
 }
 

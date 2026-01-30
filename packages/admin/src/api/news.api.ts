@@ -3,38 +3,48 @@
  * All news-related API calls
  */
 
-import type { ArticleResponse, ArticleListResponse } from '@phuong-xa/shared'
+import type { ArticleResponse, ArticleListResponse, NewsBlock } from '@phuong-xa/shared'
 import apiClient from './client'
+
+export type NewsCategory = 'su_kien' | 'thong_bao' | 'chinh_sach' | 'hoat_dong' | 'khac'
+export type NewsStatus = 'draft' | 'published' | 'archived' | 'hidden'
 
 export interface CreateArticleRequest {
   title: string
   content: string
-  excerpt?: string
-  categoryId: string
+  summary?: string
+  category: NewsCategory
   tags?: string[]
-  featuredImage?: string
+  imageUrl?: string
   isFeatured?: boolean
-  isPublished?: boolean
+  isPinned?: boolean
+  status?: NewsStatus
+  blocks?: NewsBlock[]
+  publishedAt?: string
 }
 
 export interface UpdateArticleRequest {
   title?: string
   content?: string
-  excerpt?: string
-  categoryId?: string
+  summary?: string
+  category?: NewsCategory
   tags?: string[]
-  featuredImage?: string
+  imageUrl?: string
   isFeatured?: boolean
-  isPublished?: boolean
+  isPinned?: boolean
+  status?: NewsStatus
+  blocks?: NewsBlock[]
+  publishedAt?: string
 }
 
 export interface ListArticlesParams {
   limit?: number
   offset?: number
-  categoryId?: string
+  category?: NewsCategory
   wardId?: string
-  isPublished?: boolean
+  status?: NewsStatus
   isFeatured?: boolean
+  isPinned?: boolean
   search?: string
 }
 

@@ -1,0 +1,37 @@
+@keyframes pulse-success {
+
+    0%,
+    100% {
+        border-color: rgb(34 197 94);
+        background-color: rgb(240 253 244);
+    }
+
+    50% {
+        border-color: rgb(22 163 74);
+        background-color: rgb(220 252 231);
+    }
+}
+
+@keyframes scale-in {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.animate-pulse-success {
+    animation: pulse-success 0.6s ease-in-out;
+}
+
+.animate-scale-in {
+    animation: scale-in 0.4s ease-out forwards;
+}

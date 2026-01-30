@@ -11,9 +11,9 @@ import { TagsController } from './controllers/tags.controller'
 
 const news = new Hono()
 
-// Resolve controllers from DI container
-const newsController = container.resolve(NewsController)
-const tagsController = container.resolve(TagsController)
+// Lazy resolve controllers from DI container
+const getNewsController = () => container.resolve(NewsController)
+const getTagsController = () => container.resolve(TagsController)
 
 // ============================================
 // PUBLIC ROUTES
@@ -22,12 +22,12 @@ const tagsController = container.resolve(TagsController)
 /**
  * GET / - List all articles with pagination
  */
-news.get('/', optionalAuth, (c) => newsController.list(c))
+news.get('/', optionalAuth, (c) => getNewsController().list(c))
 
 /**
  * GET /:idOrSlug - Get single article by ID or slug
  */
-news.get('/:idOrSlug', optionalAuth, (c) => newsController.getById(c))
+news.get('/:idOrSlug', optionalAuth, (c) => getNewsController().getById(c))
 
 // ============================================
 // PROTECTED ROUTES (Staff/Admin only)
@@ -36,17 +36,17 @@ news.get('/:idOrSlug', optionalAuth, (c) => newsController.getById(c))
 /**
  * POST / - Create new article
  */
-news.post('/', requireAuth, requireStaff, (c) => newsController.create(c))
+news.post('/', requireAuth, requireStaff, (c) => getNewsController().create(c))
 
 /**
  * PATCH /:id - Update article
  */
-news.patch('/:id', requireAuth, requireStaff, (c) => newsController.update(c))
+news.patch('/:id', requireAuth, requireStaff, (c) => getNewsController().update(c))
 
 /**
  * DELETE /:id - Delete article (soft delete)
  */
-news.delete('/:id', requireAuth, requireStaff, (c) => newsController.delete(c))
+news.delete('/:id', requireAuth, requireStaff, (c) => getNewsController().delete(c))
 
 // ============================================
 // TAGS ROUTES
@@ -55,6 +55,6 @@ news.delete('/:id', requireAuth, requireStaff, (c) => newsController.delete(c))
 /**
  * GET /tags/all - Get all tags
  */
-news.get('/tags/all', (c) => tagsController.listAll(c))
+news.get('/tags/all', (c) => getTagsController().listAll(c))
 
 export default news

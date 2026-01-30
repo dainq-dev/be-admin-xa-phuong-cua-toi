@@ -25,8 +25,14 @@ export class NewsController {
       const wardId = c.get('wardId') as string | undefined
 
       const result = await this.newsService.listArticles({
-        ...filters,
         wardId,
+        category: filters.category,
+        isFeatured: filters.isFeatured as boolean | undefined,
+        isPinned: filters.isPinned as boolean | undefined,
+        status: filters.status,
+        search: filters.search,
+        limit: filters.limit ?? 10,
+        offset: filters.offset ?? 0,
       })
 
       return c.json(result)

@@ -8,6 +8,8 @@ import type {
   OTPRequestResponse,
   // TokenRefreshResponse,
   UserResponse,
+  UserSettings,
+  UpdateSettingsRequest,
 } from '@phuong-xa/shared'
 import apiClient from './client'
 
@@ -29,14 +31,14 @@ export const AuthAPI = {
    * Request OTP for email login
    */
   async requestOTP(data: RequestOTPRequest): Promise<OTPRequestResponse> {
-    return apiClient.post<OTPRequestResponse>('/auth/otp/request', data)
+    return apiClient.post<OTPRequestResponse>('/auth/admin/request-otp', data)
   },
 
   /**
    * Verify OTP and login
    */
   async loginWithEmail(data: LoginWithEmailRequest): Promise<LoginResponse> {
-    return apiClient.post<LoginResponse>('/auth/otp/verify', data)
+    return apiClient.post<LoginResponse>('/auth/admin/verify-otp', data)
   },
 
   /**
@@ -59,5 +61,19 @@ export const AuthAPI = {
    */
   async logout(): Promise<void> {
     await apiClient.post('/auth/logout')
+  },
+
+  /**
+   * Get user settings
+   */
+  async getSettings(): Promise<UserSettings> {
+    return apiClient.get<UserSettings>('/auth/settings')
+  },
+
+  /**
+   * Update user settings
+   */
+  async updateSettings(data: UpdateSettingsRequest): Promise<UserSettings> {
+    return apiClient.put<UserSettings>('/auth/settings', data)
   },
 }

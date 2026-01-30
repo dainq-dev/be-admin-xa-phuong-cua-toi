@@ -16,14 +16,12 @@ import { secureHeaders } from 'hono/secure-headers'
 // MVC Modules
 import { registerNewsModule, newsRoutes } from './modules/news'
 import { registerAuthModule, authRoutes } from './modules/auth'
-
-// Other routes (to be migrated)
-import documentsRoutes from './routes/documents'
-import contactsRoutes from './routes/contacts'
-import feedbackRoutes from './routes/feedback'
-import profileRoutes from './routes/profile'
-import wardsRoutes from './routes/wards'
-import analyticsRoutes from './routes/analytics'
+import { registerContactsModule, contactsRoutes } from './modules/contacts'
+import { registerDocumentsModule, documentsRoutes } from './modules/documents'
+import { registerFeedbackModule, feedbackRoutes } from './modules/feedback'
+import { registerProfileModule, profileRoutes } from './modules/profile'
+import { registerWardsModule, wardsRoutes } from './modules/wards'
+import { registerAnalyticsModule, analyticsRoutes } from './modules/analytics'
 
 // Middleware
 import { errorHandler } from './middleware/error-handler'
@@ -39,7 +37,13 @@ const app = new Hono()
 // Register MVC module dependencies
 registerNewsModule()
 registerAuthModule()
-console.log('✅ MVC modules registered (News, Auth)')
+registerContactsModule()
+registerDocumentsModule()
+registerFeedbackModule()
+registerProfileModule()
+registerWardsModule()
+registerAnalyticsModule()
+console.log('✅ MVC modules registered (News, Auth, Contacts, Documents, Feedback, Profile, Wards, Analytics)')
 
 // Global middleware
 app.use('*', logger())
@@ -66,10 +70,8 @@ const api = new Hono()
 // MVC routes
 api.route('/auth', authRoutes)
 api.route('/news', newsRoutes)
-
-// Other routes (to be migrated to MVC)
-api.route('/documents', documentsRoutes)
 api.route('/contacts', contactsRoutes)
+api.route('/documents', documentsRoutes)
 api.route('/feedback', feedbackRoutes)
 api.route('/profile', profileRoutes)
 api.route('/wards', wardsRoutes)

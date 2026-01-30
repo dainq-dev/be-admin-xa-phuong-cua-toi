@@ -62,6 +62,7 @@ async function checkEmail(): Promise<ServiceStatus> {
       status: 'ok',
     }
   } catch (error) {
+    console.log(" 🚀- DaiNQ - 🚀: -> checkEmail -> error:", error)
     return {
       name: 'Email Service',
       status: 'error',

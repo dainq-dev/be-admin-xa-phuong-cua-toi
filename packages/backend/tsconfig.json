@@ -13,10 +13,10 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
-    "types": ["bun-types"],
-    "baseUrl": ".",
+    "types": ["@types/bun"],
     "paths": {
-      "@/*": ["./src/*"],
+      "@phuong-xa/shared": ["../shared/src/index.ts"],
+      "@/*": ["./src/*"], 
       "@/lib/*": ["./src/lib/*"],
       "@/routes/*": ["./src/routes/*"],
       "@/middleware/*": ["./src/middleware/*"],

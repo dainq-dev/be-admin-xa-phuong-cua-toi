@@ -3,6 +3,8 @@
  * Re-export from lib for core module usage
  */
 
+import { PrismaClient } from '@prisma/client'
+
 export { prisma } from '../../lib/prisma'
 export type { PrismaClient } from '@prisma/client'
 export { Prisma } from '@prisma/client'

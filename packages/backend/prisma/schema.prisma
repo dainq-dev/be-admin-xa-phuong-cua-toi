@@ -2,7 +2,7 @@
 // Based on ideal-database.md
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native"]
 }
 
@@ -56,19 +56,19 @@ model Ward {
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  district           District            @relation(fields: [districtId], references: [id], onDelete: Cascade)
-  province           Province            @relation(fields: [provinceId], references: [id], onDelete: Cascade)
-  users              User[]
-  wardSettings       WardSetting[]
-  newsArticles       NewsArticle[]
-  documents          Document[]
-  contacts           Contact[]
-  emergencyContacts  EmergencyContact[]
+  district            District             @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  province            Province             @relation(fields: [provinceId], references: [id], onDelete: Cascade)
+  users               User[]
+  wardSettings        WardSetting[]
+  newsArticles        NewsArticle[]
+  documents           Document[]
+  contacts            Contact[]
+  emergencyContacts   EmergencyContact[]
   feedbackSubmissions FeedbackSubmission[]
-  pageThemes         PageTheme[]
-  uiComponents       UiComponent[]
-  featureFlags       FeatureFlag[]
-  analyticsEvents    AnalyticsEvent[]
+  pageThemes          PageTheme[]
+  uiComponents        UiComponent[]
+  featureFlags        FeatureFlag[]
+  analyticsEvents     AnalyticsEvent[]
 
   @@index([districtId])
   @@index([provinceId])
@@ -115,16 +115,16 @@ model User {
   deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
 
   // Relations
-  ward             Ward?                @relation(fields: [wardId], references: [id], onDelete: SetNull)
-  sessions         UserSession[]
-  settings         UserSettings?
-  newsArticles     NewsArticle[]        @relation("AuthorArticles")
+  ward                Ward?                @relation(fields: [wardId], references: [id], onDelete: SetNull)
+  sessions            UserSession[]
+  settings            UserSettings?
+  newsArticles        NewsArticle[]        @relation("AuthorArticles")
   feedbackSubmissions FeedbackSubmission[] @relation("UserFeedbacks")
-  assignedFeedbacks FeedbackSubmission[]  @relation("AssignedFeedbacks")
-  feedbackHistory  FeedbackHistory[]
-  analyticsEvents  AnalyticsEvent[]
-  callLogs         CallLog[]
-  downloadLogs     DownloadLog[]
+  assignedFeedbacks   FeedbackSubmission[] @relation("AssignedFeedbacks")
+  feedbackHistory     FeedbackHistory[]
+  analyticsEvents     AnalyticsEvent[]
+  callLogs            CallLog[]
+  downloadLogs        DownloadLog[]
 
   @@index([zaloId])
   @@index([email])
@@ -153,16 +153,16 @@ model UserSession {
 }
 
 model UserSettings {
-  id                  String   @id @default(uuid()) @db.Uuid
-  userId              String   @unique @map("user_id") @db.Uuid
-  theme               String   @default("light") @db.VarChar(20)
-  language            String   @default("vi") @db.VarChar(5)
-  notificationsEnabled Boolean @default(true) @map("notifications_enabled")
-  feedbackUpdates     Boolean  @default(true) @map("feedback_updates")
-  newsAlerts          Boolean  @default(true) @map("news_alerts")
-  emergencyAlerts     Boolean  @default(true) @map("emergency_alerts")
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id                   String   @id @default(uuid()) @db.Uuid
+  userId               String   @unique @map("user_id") @db.Uuid
+  theme                String   @default("light") @db.VarChar(20)
+  language             String   @default("vi") @db.VarChar(5)
+  notificationsEnabled Boolean  @default(true) @map("notifications_enabled")
+  feedbackUpdates      Boolean  @default(true) @map("feedback_updates")
+  newsAlerts           Boolean  @default(true) @map("news_alerts")
+  emergencyAlerts      Boolean  @default(true) @map("emergency_alerts")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -188,17 +188,20 @@ model NewsArticle {
   viewCount   Int       @default(0) @map("view_count")
   isFeatured  Boolean   @default(false) @map("is_featured")
   isPinned    Boolean   @default(false) @map("is_pinned")
+  status      String    @default("draft") @db.VarChar(20) // draft, published, archived, hidden
+  blocks      Json?     @map("blocks") @db.JsonB
   publishedAt DateTime? @map("published_at") @db.Timestamptz
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
 
   // Relations
-  ward   Ward  @relation(fields: [wardId], references: [id], onDelete: Cascade)
-  author User? @relation("AuthorArticles", fields: [authorId], references: [id], onDelete: SetNull)
+  ward   Ward             @relation(fields: [wardId], references: [id], onDelete: Cascade)
+  author User?            @relation("AuthorArticles", fields: [authorId], references: [id], onDelete: SetNull)
   tags   NewsArticleTag[]
 
-  @@index([wardId, publishedAt(sort: Desc), deletedAt])
+  @@index([wardId, status, publishedAt(sort: Desc), deletedAt])
+  @@index([status, publishedAt])
   @@index([isFeatured, isPinned, deletedAt])
   @@index([category, deletedAt])
   @@index([slug])
@@ -254,11 +257,11 @@ model Document {
   deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
 
   // Relations
-  ward           Ward                   @relation(fields: [wardId], references: [id], onDelete: Cascade)
-  steps          DocumentStep[]
-  requiredDocs   DocumentRequiredDoc[]
-  forms          DocumentForm[]
-  contactInfo    DocumentContactInfo[]
+  ward         Ward                  @relation(fields: [wardId], references: [id], onDelete: Cascade)
+  steps        DocumentStep[]
+  requiredDocs DocumentRequiredDoc[]
+  forms        DocumentForm[]
+  contactInfo  DocumentContactInfo[]
 
   @@index([wardId, category, deletedAt])
   @@index([slug])
@@ -355,9 +358,9 @@ model Contact {
   deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
 
   // Relations
-  ward        Ward                   @relation(fields: [wardId], references: [id], onDelete: Cascade)
-  documents   DocumentContactInfo[]
-  callLogs    CallLog[]
+  ward      Ward                  @relation(fields: [wardId], references: [id], onDelete: Cascade)
+  documents DocumentContactInfo[]
+  callLogs  CallLog[]
 
   @@index([wardId, department, deletedAt])
   @@index([wardId, isEmergency, deletedAt])
@@ -409,9 +412,9 @@ model FeedbackSubmission {
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  ward         Ward               @relation(fields: [wardId], references: [id], onDelete: Cascade)
-  user         User               @relation("UserFeedbacks", fields: [userId], references: [id], onDelete: Cascade)
-  assignedUser User?              @relation("AssignedFeedbacks", fields: [assignedTo], references: [id], onDelete: SetNull)
+  ward         Ward              @relation(fields: [wardId], references: [id], onDelete: Cascade)
+  user         User              @relation("UserFeedbacks", fields: [userId], references: [id], onDelete: Cascade)
+  assignedUser User?             @relation("AssignedFeedbacks", fields: [assignedTo], references: [id], onDelete: SetNull)
   photos       FeedbackPhoto[]
   history      FeedbackHistory[]
 

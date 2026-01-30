@@ -3,11 +3,13 @@
  * For caching, sessions, and rate limiting
  */
 
-import { createClient } from 'redis'
+import Redis from 'ioredis'
 import { env } from './env'
 
-export const redis = createClient({
-  url: env.REDIS_URL,
+// Create Redis client instance
+export const redis = new Redis(env.REDIS_URL, {
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false
 })
 
 redis.on('error', (err) => {
@@ -18,8 +20,7 @@ redis.on('connect', () => {
   console.log('✅ Redis connected')
 })
 
-// Connect to Redis
-await redis.connect()
+// IORedis connects automatically, no need to call connect()
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
@@ -48,7 +49,7 @@ export const cache = {
   async set(key: string, value: unknown, ttl?: number): Promise<void> {
     const stringValue = JSON.stringify(value)
     if (ttl) {
-      await redis.setEx(key, ttl, stringValue)
+      await redis.set(key, stringValue, 'EX', ttl)
     } else {
       await redis.set(key, stringValue)
     }
@@ -65,10 +66,19 @@ export const cache = {
    * Delete all keys matching pattern
    */
   async deletePattern(pattern: string): Promise<void> {
-    const keys = await redis.keys(pattern)
-    if (keys.length > 0) {
-      await redis.del(keys)
-    }
+    const stream = redis.scanStream({
+      match: pattern,
+    })
+    
+    stream.on('data', (keys) => {
+      if (keys.length) {
+        const pipeline = redis.pipeline()
+        keys.forEach((key: string) => {
+          pipeline.del(key)
+        })
+        pipeline.exec()
+      }
+    })
   },
 
   /**

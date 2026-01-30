@@ -239,7 +239,6 @@ export class NewsRepository {
   private buildWhereClause(filters: NewsFiltersInput): any {
     const where: any = {
       deletedAt: null,
-      publishedAt: { lte: new Date() },
     }
 
     if (filters.wardId) {
@@ -248,6 +247,15 @@ export class NewsRepository {
 
     if (filters.category) {
       where.category = filters.category
+    }
+
+    if (filters.status) {
+      where.status = filters.status
+      
+      // If filtering by published status, ensure publishedAt is in the past
+      if (filters.status === 'published') {
+        where.publishedAt = { lte: new Date() }
+      }
     }
 
     if (filters.isFeatured !== undefined) {

@@ -64,8 +64,15 @@ export class SessionService {
   /**
    * Delete all sessions for user (logout all devices)
    */
-  async deleteAllUserSessions(userId: string) {
-    await this.sessionRepository.deleteAllForUser(userId)
+  async deleteAllUserSessions(userId: string): Promise<number> {
+    return await this.sessionRepository.deleteAllForUser(userId)
+  }
+
+  /**
+   * Get all active sessions for user
+   */
+  async getUserSessions(userId: string) {
+    return await this.sessionRepository.findAllByUser(userId)
   }
 
   /**

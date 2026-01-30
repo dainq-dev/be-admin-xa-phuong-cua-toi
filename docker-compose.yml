@@ -59,8 +59,10 @@ services:
       - .env
     environment:
       REDIS_HOSTS: local:redis:6379:0:${REDIS_PASSWORD}
+      HTTP_PORT: 8081
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
 
 volumes:
   # postgres_data:

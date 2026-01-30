@@ -9,6 +9,7 @@ import { SessionRepository } from '../repositories/session.repository'
 import { JWTService } from './jwt.service'
 import { OTPService } from './otp.service'
 import { SessionService } from './session.service'
+import { ZaloService } from './zalo.service'
 import { sendOTPEmail } from '../../../lib/email'
 import type {
   ZaloLoginInput,
@@ -28,7 +29,8 @@ export class AuthService {
     private sessionRepository: SessionRepository,
     private jwtService: JWTService,
     private otpService: OTPService,
-    private sessionService: SessionService
+    private sessionService: SessionService,
+    private zaloService: ZaloService
   ) {}
 
   /**
@@ -39,8 +41,15 @@ export class AuthService {
     deviceInfo?: Record<string, any>,
     ipAddress?: string
   ): Promise<LoginResponse> {
-    // TODO: Verify Zalo access token with Zalo API
-    // For now, trust the client
+    // Verify Zalo access token (if enabled)
+    const zaloResult = await this.zaloService.validateZaloId(
+      input.zaloAccessToken,
+      input.zaloId
+    )
+
+    if (!zaloResult.valid) {
+      throw new Error(zaloResult.error || 'Invalid Zalo token')
+    }
 
     // Find or create user in transaction
     const user = await this.prisma.$transaction(async (tx) => {
@@ -118,11 +127,17 @@ export class AuthService {
       throw new Error('Account is inactive or deleted')
     }
 
-    // Check if OTP already sent recently
-    if (await this.otpService.exists(input.email)) {
-      const ttl = await this.otpService.getTTL(input.email)
+    // Check if can request OTP (respects cooldown and lockout)
+    const canRequest = await this.otpService.canRequestOTP(input.email)
+    if (!canRequest.allowed) {
+      const isLocked = await this.otpService.isLocked(input.email)
+      if (isLocked) {
+        throw new Error(
+          `Account temporarily locked due to too many failed attempts. Try again in ${canRequest.waitSeconds} seconds`
+        )
+      }
       throw new Error(
-        `OTP already sent. Please wait ${ttl} seconds before requesting again`
+        `Please wait ${canRequest.waitSeconds} seconds before requesting a new OTP`
       )
     }
 
@@ -153,10 +168,23 @@ export class AuthService {
     deviceInfo?: Record<string, any>,
     ipAddress?: string
   ): Promise<LoginResponse> {
-    // Verify OTP
-    const isValid = await this.otpService.verify(input.email, input.otp)
+    // Verify OTP with attempt tracking
+    const result = await this.otpService.verify(input.email, input.otp)
 
-    if (!isValid) {
+    if (!result.valid) {
+      if (result.locked) {
+        const lockTTL = await this.otpService.getLockTTL(input.email)
+        throw new Error(
+          `Account temporarily locked due to too many failed attempts. Try again in ${lockTTL} seconds`
+        )
+      }
+
+      if (result.attemptsRemaining !== undefined && result.attemptsRemaining > 0) {
+        throw new Error(
+          `Invalid OTP. ${result.attemptsRemaining} attempts remaining`
+        )
+      }
+
       throw new Error('Invalid or expired OTP')
     }
 
@@ -232,6 +260,21 @@ export class AuthService {
    */
   async logout(userId: string, token: string): Promise<void> {
     await this.sessionService.deleteSession(userId, token)
+  }
+
+  /**
+   * Logout all sessions for a user
+   */
+  async logoutAll(userId: string): Promise<{ deletedCount: number }> {
+    const count = await this.sessionService.deleteAllUserSessions(userId)
+    return { deletedCount: count }
+  }
+
+  /**
+   * Get active sessions for a user
+   */
+  async getActiveSessions(userId: string) {
+    return await this.sessionService.getUserSessions(userId)
   }
 
   /**

@@ -109,11 +109,38 @@ export class SessionRepository {
   async deleteAllForUser(
     userId: string,
     tx?: PrismaTransaction
-  ): Promise<void> {
+  ): Promise<number> {
     const prisma = (tx ?? this.prisma) as any
 
-    await prisma.userSession.deleteMany({
+    const result = await prisma.userSession.deleteMany({
       where: { userId },
+    })
+
+    return result.count
+  }
+
+  /**
+   * Get all active sessions for user
+   */
+  async findAllByUser(
+    userId: string,
+    tx?: PrismaTransaction
+  ): Promise<UserSession[]> {
+    const prisma = (tx ?? this.prisma) as any
+
+    return await prisma.userSession.findMany({
+      where: {
+        userId,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        deviceInfo: true,
+        ipAddress: true,
+        expiresAt: true,
+        createdAt: true,
+      },
     })
   }
 

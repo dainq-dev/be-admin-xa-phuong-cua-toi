@@ -140,8 +140,8 @@ export const feedbackFiltersSchema = z.object({
   status: z.string().optional(),
   userId: z.string().uuid().optional(),
   wardId: z.string().uuid().optional(),
-  limit: z.string().transform(Number).default('10'),
-  offset: z.string().transform(Number).default('0'),
+  limit: z.coerce.number().default(10),
+  offset: z.coerce.number().default(0),
 })
 
 // ============================================
@@ -186,10 +186,11 @@ export const updateFeatureFlagSchema = z.object({
 
 /**
  * Validate request body with Zod schema
+ * Using ZodType with 'any' for input allows schemas with .default() and .transform()
  */
 export async function validateBody<T>(
   body: unknown,
-  schema: z.ZodSchema<T>
+  schema: z.ZodType<T, z.ZodTypeDef, any>
 ): Promise<T> {
   return await schema.parseAsync(body)
 }

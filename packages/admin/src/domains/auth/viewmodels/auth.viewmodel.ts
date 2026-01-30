@@ -99,7 +99,7 @@ export const useAuthViewModel = create<AuthViewModel>((set, get) => ({
       set({
         isOTPSent: true,
         isLoading: false,
-        otpCountdown: 60,
+        otpCountdown: 180,
       })
 
       // Start countdown

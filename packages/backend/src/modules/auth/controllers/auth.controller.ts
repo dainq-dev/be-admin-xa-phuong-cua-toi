@@ -50,19 +50,28 @@ export class AuthController {
   async requestOTP(c: Context) {
     try {
       const body = await validateBody(await c.req.json(), loginAdminSchema)
+      console.log(" 🚀- DaiNQ - 🚀: -> AuthController -> requestOTP -> body:", body)
 
       const result = await this.authService.requestOTP(body)
+      console.log(" 🚀- DaiNQ - 🚀: -> AuthController -> requestOTP -> result:", result)
 
       return c.json(result)
     } catch (error) {
       if (error instanceof Error) {
-        const status = error.message.includes('not found') ? 404 : 403
-
-        if (error.message.includes('already sent')) {
+        // Account locked
+        if (error.message.includes('locked')) {
           return c.json({ error: error.message }, 429)
         }
-
-        return c.json({ error: error.message }, status)
+        // Rate limited (cooldown)
+        if (error.message.includes('wait')) {
+          return c.json({ error: error.message }, 429)
+        }
+        // User not found
+        if (error.message.includes('not found')) {
+          return c.json({ error: error.message }, 404)
+        }
+        // Not authorized
+        return c.json({ error: error.message }, 403)
       }
       throw error
     }
@@ -89,9 +98,19 @@ export class AuthController {
 
       return c.json(result)
     } catch (error) {
+      console.log(" 🚀- DaiNQ - 🚀: -> AuthController -> verifyOTP -> error:", error)
       if (error instanceof Error) {
-        const status = error.message.includes('Invalid') ? 401 : 404
-        return c.json({ error: error.message }, status)
+        console.log(" 🚀- DaiNQ - 🚀: -> Error message:", error.message)
+        // Account locked
+        if (error.message.includes('locked')) {
+          return c.json({ error: error.message }, 429)
+        }
+        // Invalid OTP with attempts remaining
+        if (error.message.includes('Invalid') || error.message.includes('attempts')) {
+          return c.json({ error: error.message }, 401)
+        }
+        // User not found
+        return c.json({ error: error.message }, 404)
       }
       throw error
     }
@@ -145,6 +164,47 @@ export class AuthController {
       if (error instanceof Error) {
         return c.json({ error: error.message }, 404)
       }
+      throw error
+    }
+  }
+
+  /**
+   * POST /logout-all - Logout all sessions (requires auth)
+   */
+  async logoutAll(c: Context) {
+    try {
+      const userId = c.get('userId') as string
+
+      const result = await this.authService.logoutAll(userId)
+
+      return c.json({
+        message: 'All sessions have been logged out',
+        ...result,
+      })
+    } catch (error) {
+      throw error
+    }
+  }
+
+  /**
+   * GET /sessions - Get active sessions (requires auth)
+   */
+  async getSessions(c: Context) {
+    try {
+      const userId = c.get('userId') as string
+
+      const sessions = await this.authService.getActiveSessions(userId)
+
+      return c.json({
+        sessions: sessions.map((s: any) => ({
+          id: s.id,
+          deviceInfo: s.deviceInfo,
+          ipAddress: s.ipAddress,
+          expiresAt: s.expiresAt,
+          createdAt: s.createdAt,
+        })),
+      })
+    } catch (error) {
       throw error
     }
   }

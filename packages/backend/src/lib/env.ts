@@ -28,13 +28,13 @@ const envSchema = z.object({
   ZALO_APP_SECRET: z.string(),
   ZALO_OAUTH_URL: z.string().url().default('https://oauth.zaloapp.com/v4'),
 
-  // Email
-  EMAIL_HOST: z.string(),
-  EMAIL_PORT: z.string().transform(Number),
+  // Email (optional in development)
+  EMAIL_HOST: z.string().optional(),
+  EMAIL_PORT: z.string().transform(Number).optional(),
   EMAIL_SECURE: z.string().default('false').transform((v) => v === 'true'),
-  EMAIL_USER: z.string().email(),
-  EMAIL_PASSWORD: z.string(),
-  EMAIL_FROM: z.string(),
+  EMAIL_USER: z.string().email().optional(),
+  EMAIL_PASSWORD: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
 
   // OTP
   OTP_EXPIRY: z.string().default('300').transform(Number), // 5 minutes

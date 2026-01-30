@@ -3,8 +3,12 @@
  * Re-export from lib for core module usage
  */
 
+// Basic export
 export { redis, cache } from '../../lib/redis'
-export type { RedisClientType } from 'redis'
+
+// Type exports
+import { Redis } from 'ioredis'
+export type RedisClientType = Redis
 
 /**
  * Cache Service Interface

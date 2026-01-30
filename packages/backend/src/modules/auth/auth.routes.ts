@@ -10,8 +10,8 @@ import { AuthController } from './controllers/auth.controller'
 
 const auth = new Hono()
 
-// Resolve controller from DI container
-const authController = container.resolve(AuthController)
+// Lazy resolve controller from DI container
+const getAuthController = () => container.resolve(AuthController)
 
 // ============================================
 // ZALO OAUTH LOGIN (Mini App Users)
@@ -20,7 +20,7 @@ const authController = container.resolve(AuthController)
 /**
  * POST /zalo/login - Zalo OAuth login
  */
-auth.post('/zalo/login', (c) => authController.loginWithZalo(c))
+auth.post('/zalo/login', (c) => getAuthController().loginWithZalo(c))
 
 // ============================================
 // EMAIL OTP LOGIN (Admin Users)
@@ -29,12 +29,12 @@ auth.post('/zalo/login', (c) => authController.loginWithZalo(c))
 /**
  * POST /admin/request-otp - Request OTP (Step 1)
  */
-auth.post('/admin/request-otp', (c) => authController.requestOTP(c))
+auth.post('/admin/request-otp', (c) => getAuthController().requestOTP(c))
 
 /**
  * POST /admin/verify-otp - Verify OTP and login (Step 2)
  */
-auth.post('/admin/verify-otp', (c) => authController.verifyOTP(c))
+auth.post('/admin/verify-otp', (c) => getAuthController().verifyOTP(c))
 
 // ============================================
 // TOKEN REFRESH
@@ -43,7 +43,7 @@ auth.post('/admin/verify-otp', (c) => authController.verifyOTP(c))
 /**
  * POST /refresh - Refresh access token
  */
-auth.post('/refresh', (c) => authController.refreshToken(c))
+auth.post('/refresh', (c) => getAuthController().refreshToken(c))
 
 // ============================================
 // LOGOUT (Requires Auth)
@@ -52,7 +52,7 @@ auth.post('/refresh', (c) => authController.refreshToken(c))
 /**
  * POST /logout - Logout current session
  */
-auth.post('/logout', requireAuth, (c) => authController.logout(c))
+auth.post('/logout', requireAuth, (c) => getAuthController().logout(c))
 
 // ============================================
 // CURRENT USER (Requires Auth)
@@ -61,6 +61,20 @@ auth.post('/logout', requireAuth, (c) => authController.logout(c))
 /**
  * GET /me - Get current user info
  */
-auth.get('/me', requireAuth, (c) => authController.getCurrentUser(c))
+auth.get('/me', requireAuth, (c) => getAuthController().getCurrentUser(c))
+
+// ============================================
+// SESSION MANAGEMENT (Requires Auth)
+// ============================================
+
+/**
+ * GET /sessions - Get active sessions
+ */
+auth.get('/sessions', requireAuth, (c) => getAuthController().getSessions(c))
+
+/**
+ * POST /logout-all - Logout all sessions
+ */
+auth.post('/logout-all', requireAuth, (c) => getAuthController().logoutAll(c))
 
 export default auth

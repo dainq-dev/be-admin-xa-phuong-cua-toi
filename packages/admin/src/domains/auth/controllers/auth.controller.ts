@@ -6,7 +6,7 @@
 import { AuthAPI } from '@/api/auth.api'
 import { TokenStorage } from '@/utils/token'
 import { APIError } from '@/api/client'
-import type { LoginResponse, OTPRequestResponse } from '@phuong-xa/shared'
+import type { LoginResponse, OTPRequestResponse, UserSettings, UpdateSettingsRequest } from '@phuong-xa/shared'
 
 export interface RequestOTPInput {
   email: string
@@ -44,7 +44,7 @@ export class AuthController {
     try {
       const response = await AuthAPI.loginWithEmail(input)
 
-      // Save tokens
+      // Save tokens (backend returns flat structure)
       TokenStorage.setTokens(response.accessToken, response.refreshToken)
 
       return response
@@ -82,6 +82,34 @@ export class AuthController {
     } finally {
       // Always clear tokens
       TokenStorage.clearTokens()
+    }
+  }
+
+  /**
+   * Get user settings
+   */
+  async getSettings(): Promise<UserSettings> {
+    try {
+      return await AuthAPI.getSettings()
+    } catch (error) {
+      if (error instanceof APIError) {
+        throw new Error(error.data?.error || 'Không thể tải cài đặt')
+      }
+      throw new Error('Không thể tải cài đặt')
+    }
+  }
+
+  /**
+   * Update user settings
+   */
+  async updateSettings(data: UpdateSettingsRequest): Promise<UserSettings> {
+    try {
+      return await AuthAPI.updateSettings(data)
+    } catch (error) {
+      if (error instanceof APIError) {
+        throw new Error(error.data?.error || 'Không thể cập nhật cài đặt')
+      }
+      throw new Error('Không thể cập nhật cài đặt')
     }
   }
 }

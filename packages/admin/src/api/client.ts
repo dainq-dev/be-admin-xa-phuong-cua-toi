@@ -119,7 +119,7 @@ async function apiFetch<T = any>(
     // If this is a refresh token request that failed, logout
     if (endpoint.includes('/auth/refresh')) {
       TokenStorage.clearTokens()
-      window.location.href = '/login'
+      window.location.href = '/dang-nhap'
       throw new APIError(401, 'Unauthorized', null, 'Session expired')
     }
 
@@ -144,7 +144,7 @@ async function apiFetch<T = any>(
 
     if (!refreshToken) {
       TokenStorage.clearTokens()
-      window.location.href = '/login'
+      window.location.href = '/dang-nhap'
       throw new APIError(401, 'Unauthorized', null, 'No refresh token')
     }
 
@@ -177,7 +177,7 @@ async function apiFetch<T = any>(
       // Refresh failed - logout
       processQueue(refreshError as Error, null)
       TokenStorage.clearTokens()
-      window.location.href = '/login'
+      window.location.href = '/dang-nhap'
       throw refreshError
     } finally {
       isRefreshing = false

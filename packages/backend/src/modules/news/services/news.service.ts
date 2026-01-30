@@ -57,6 +57,8 @@ export class NewsService {
           category: input.category,
           isFeatured: input.isFeatured ?? false,
           isPinned: input.isPinned ?? false,
+          status: input.status,
+          blocks: input.blocks,
           publishedAt: input.publishedAt ? new Date(input.publishedAt) : new Date(),
           wardId: input.wardId,
           authorId: input.authorId,

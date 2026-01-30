@@ -14,6 +14,7 @@ import { SessionRepository } from './repositories/session.repository'
 import { JWTService } from './services/jwt.service'
 import { OTPService } from './services/otp.service'
 import { SessionService } from './services/session.service'
+import { ZaloService } from './services/zalo.service'
 import { AuthService } from './services/auth.service'
 
 // Controllers
@@ -46,6 +47,7 @@ export function registerAuthModule(): void {
     () => new SessionService(container.resolve(SessionRepository)),
     true
   )
+  container.register(ZaloService, () => new ZaloService(), true)
   container.register(
     AuthService,
     () =>
@@ -55,7 +57,8 @@ export function registerAuthModule(): void {
         container.resolve(SessionRepository),
         container.resolve(JWTService),
         container.resolve(OTPService),
-        container.resolve(SessionService)
+        container.resolve(SessionService),
+        container.resolve(ZaloService)
       ),
     true
   )
