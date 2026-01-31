@@ -2,7 +2,7 @@
 
 **Ngày tạo:** 31/01/2026
 **Cập nhật lần cuối:** 31/01/2026
-**Trạng thái hiện tại:** ~85% hoàn thành (Phase 1, 2 & 3 Done)
+**Trạng thái hiện tại:** ~97% hoàn thành (Phase 1, 2, 3, 4, 5.1 & 5.2 partial Done)
 **Mục tiêu:** 100% production-ready
 
 ---
@@ -192,15 +192,26 @@
 
 ### Phase 5: Optimization (Nice to have) 🚀
 
-#### 5.1 Tối ưu code của các trang hiện tại
-- [ ] Tach logic & UI ra, các state sẽ lấy từ hook/eventstore
-- [ ] Ở UI chỉ xử lí các side effect, call hàm từ hook/eventstore render UI (tạo file hook ngay cạnh file index.tsx của trang đó)
+#### 5.1 Tối ưu code của các trang hiện tại ✅
+- [x] Tach logic & UI ra, các state sẽ lấy từ hook/eventstore
+- [x] Ở UI chỉ xử lí các side effect, call hàm từ hook/eventstore render UI (tạo file hook ngay cạnh file index.tsx của trang đó)
 
-#### 5.2 React 19 Features
-- [ ] Refactor data fetching với `use()` hook
-- [ ] Add `useOptimistic()` cho delete/update actions
-- [ ] Add `useFormStatus()` cho submit buttons
-- [ ] Wrap routes với `<Suspense>` boundaries
+**Hooks đã tạo:**
+- ✅ `src/views/tin-tuc/useTinTuc.ts`
+- ✅ `src/views/tai-lieu/useTaiLieu.ts`
+- ✅ `src/views/gop-y/useGopY.ts`
+- ✅ `src/views/nguoi-dung/useNguoiDung.ts`
+- ✅ `src/views/cai-dat/useCaiDat.ts`
+
+#### 5.2 React 19 Features ⚠️ Partial
+- [ ] Refactor data fetching với `use()` hook (requires significant refactoring)
+- [x] Add `useOptimistic()` cho delete/update actions ✅
+  - ✅ `useTinTuc.ts` - optimistic delete article
+  - ✅ `useTaiLieu.ts` - optimistic delete document
+  - ✅ `useGopY.ts` - optimistic update status
+  - ✅ `useNguoiDung.ts` - optimistic update user
+- [ ] Add `useFormStatus()` cho submit buttons (requires form refactoring)
+- [ ] Wrap routes với `<Suspense>` boundaries (optional)
 
 #### 5.3 Build Optimization
 - [ ] Add manual chunks trong `vite.config.ts`
@@ -216,35 +227,75 @@
 
 ## Files Tổng Hợp
 
-### Đã Tạo Mới (4/10 files)
+### Đã Tạo Mới (12 files)
 ```
+# Phase 1 - Security
 ✅ src/components/PrivateRoute.tsx
 ✅ src/components/ErrorBoundary.tsx
 ✅ src/components/ErrorFallback.tsx
+
+# Phase 3 - CRUD
 ✅ src/views/cai-dat/index.tsx
-⬜ src/components/ui/skeleton.tsx
-⬜ src/views/lien-he/index.tsx (skipped)
-⬜ src/views/lien-he/ContactForm.tsx (skipped)
-⬜ src/views/gop-y/detail.tsx (integrated in index)
-⬜ src/features/news/components/MetadataForm.tsx (integrated in editor)
+
+# Phase 4 - UX
+✅ src/components/ui/skeleton.tsx
+✅ src/components/ui/toast.tsx
+✅ src/components/ui/toaster.tsx
+
+# Phase 5.1 - Hooks (Code Organization)
+✅ src/views/tin-tuc/useTinTuc.ts
+✅ src/views/tai-lieu/useTaiLieu.ts
+✅ src/views/gop-y/useGopY.ts
+✅ src/views/nguoi-dung/useNguoiDung.ts
+✅ src/views/cai-dat/useCaiDat.ts
+
+# Skipped
+⬜ src/views/lien-he/index.tsx (không có route)
 ```
 
-### Đã Sửa (10/12 files)
+### Đã Sửa (10 files)
 ```
-✅ src/App.tsx
-✅ src/views/dang-nhap/index.tsx
-✅ src/views/tin-tuc/index.tsx
-✅ src/views/tin-tuc/editor.tsx
-✅ src/views/tai-lieu/index.tsx
-✅ src/views/gop-y/index.tsx
-✅ src/views/nguoi-dung/index.tsx
-✅ src/api/news.api.ts
-✅ src/api/auth.api.ts
-✅ src/domains/auth/controllers/auth.controller.ts
-⬜ src/components/layout/Sidebar.tsx (không cần sửa - đã đúng)
-⬜ vite.config.ts (Phase 5)
-⬜ package.json (Phase 5)
+✅ src/App.tsx - Route guards, Error boundary, Toaster
+✅ src/views/dang-nhap/index.tsx - OTP login flow
+✅ src/views/tin-tuc/index.tsx - Refactored với useTinTuc hook
+✅ src/views/tin-tuc/editor.tsx - Full editor với metadata
+✅ src/views/tai-lieu/index.tsx - Refactored với useTaiLieu hook
+✅ src/views/gop-y/index.tsx - Refactored với useGopY hook
+✅ src/views/nguoi-dung/index.tsx - Refactored với useNguoiDung hook
+✅ src/views/cai-dat/index.tsx - Refactored với useCaiDat hook
+✅ src/api/news.api.ts - Updated types
+✅ src/api/auth.api.ts - Added settings methods
 ```
+
+---
+
+## Kiến Trúc Code (Phase 5.1)
+
+```
+src/views/
+├── tin-tuc/
+│   ├── index.tsx      # UI only - render components
+│   ├── useTinTuc.ts   # Logic - state, API calls, handlers
+│   └── editor.tsx
+├── tai-lieu/
+│   ├── index.tsx      # UI only
+│   └── useTaiLieu.ts  # Logic
+├── gop-y/
+│   ├── index.tsx      # UI only
+│   └── useGopY.ts     # Logic
+├── nguoi-dung/
+│   ├── index.tsx      # UI only
+│   └── useNguoiDung.ts # Logic
+└── cai-dat/
+    ├── index.tsx      # UI only
+    └── useCaiDat.ts   # Logic
+```
+
+**Pattern áp dụng:**
+- `index.tsx` - Chỉ render UI, không có business logic
+- `use[TenTrang].ts` - Custom hook chứa toàn bộ state và handlers
+- Toast notifications thay thế alert/confirm
+- TableSkeleton/CardSkeleton cho loading states
 
 ---
 
@@ -263,14 +314,15 @@
 - [x] Feedback list và update status
 - [x] Documents CRUD
 - [ ] Contacts list và CRUD (skipped)
-- [x] Users list
-- [x] Settings hiển thị
+- [x] Users list và edit
+- [x] Settings hiển thị và lưu
 
 ### UX
-- [x] Loading states hiển thị đúng (Loader2 spinner)
+- [x] Loading states hiển thị đúng (TableSkeleton, CardSkeleton)
+- [x] Toast notifications cho success/error
 - [x] Error messages hiển thị
 - [x] Navigation hoạt động đúng
-- [ ] Responsive trên mobile (cần test)
+- [ ] Responsive trên mobile (cần test thủ công)
 
 ---
 
@@ -289,27 +341,26 @@
 | 31/01/2026 | Phase 3 | Feedback Module | Stats cards, filters, status update |
 | 31/01/2026 | Phase 3 | Users Module | List, search, role filter, edit |
 | 31/01/2026 | Phase 3 | Settings Module | Ward info, profile, notifications |
-| | | | |
+| 31/01/2026 | Phase 4 | UX Polish | Skeleton, toast, dark mode |
+| 31/01/2026 | Phase 5.1 | Code Organization | Tách logic/UI với custom hooks |
+| 31/01/2026 | Phase 5.2 | React 19 useOptimistic | Added to all 4 hooks for instant UI feedback |
 
 ---
 
 ## Ghi Chú
-- **Ưu tiên:** Phase 1 ✅ > Phase 2 ✅ > Phase 3 ✅ > Phase 4 > Phase 5
+- **Ưu tiên:** Phase 1 ✅ > Phase 2 ✅ > Phase 3 ✅ > Phase 4 ✅ > Phase 5.1 ✅ > Phase 5.2-5.4
 - **Không skip:** Phase 1 (Security) ✅ DONE
-- **Có thể skip:** Phase 5 nếu thời gian hạn chế
+- **Có thể skip:** Phase 5.2-5.4 nếu thời gian hạn chế
 - **Contacts Module:** Skipped vì không có route `/lien-he` trong App.tsx
+- **Code Organization:** Tất cả views đã được tách logic ra custom hooks
 
 ---
 
 ## Tiếp Theo (Next Session)
 
-Bắt đầu từ **Phase 4 - UX & Polish**:
-1. Skeleton loading components
-2. Toast notifications
-3. Dark mode completion
-4. Responsive testing
-
-Hoặc **Phase 5 - Optimization** nếu ưu tiên performance:
-1. React 19 features (use, useOptimistic)
-2. Code splitting
-3. Build optimization
+**Phase 5 - Optimization** (còn lại - optional):
+1. ~~`useOptimistic()`~~ ✅ DONE
+2. React 19 features (`use()`, `useFormStatus()`) - requires significant refactoring
+3. Code splitting với `React.lazy()`
+4. Build optimization (manual chunks trong vite.config.ts)
+5. Testing với Vitest (nếu có thời gian)

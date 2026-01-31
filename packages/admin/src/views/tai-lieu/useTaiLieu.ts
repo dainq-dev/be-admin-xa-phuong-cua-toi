@@ -2,9 +2,10 @@
  * useTaiLieu Hook
  * Custom hook for Documents List view - handles all business logic & state management
  * Including dialog states for create/edit/view operations
+ * Uses useOptimistic for instant UI feedback on delete actions
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useOptimistic } from 'react'
 import { DocumentsController } from '@/domains/documents/controllers/documents.controller'
 import type { CreateDocumentRequest, UpdateDocumentRequest, ListDocumentsParams } from '@/api/documents.api'
 import { toast } from '@/components/ui/toast'
@@ -41,11 +42,32 @@ interface DocumentListResponse {
   hasMore: boolean
 }
 
+// Optimistic reducer for delete action
+type OptimisticAction = { type: 'delete'; id: string }
+
+function optimisticReducer(
+  state: Document[],
+  action: OptimisticAction
+): Document[] {
+  switch (action.type) {
+    case 'delete':
+      return state.filter((item) => item.id !== action.id)
+    default:
+      return state
+  }
+}
+
 export function useTaiLieu() {
   // Data state
   const [data, setData] = useState<DocumentListResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Optimistic state for items
+  const [optimisticItems, addOptimisticAction] = useOptimistic(
+    data?.items ?? [],
+    optimisticReducer
+  )
 
   // Filter state
   const [search, setSearch] = useState('')
@@ -179,8 +201,12 @@ export function useTaiLieu() {
     }
   }, [formData, dialogMode, editingId, loadDocuments])
 
+  // Delete with optimistic update
   const handleDelete = useCallback(async (id: string) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa thủ tục này?')) {
+      // Optimistically remove from UI immediately
+      addOptimisticAction({ type: 'delete', id })
+
       try {
         await documentsController.deleteDocument(id)
         toast({
@@ -195,9 +221,11 @@ export function useTaiLieu() {
           title: 'Lỗi',
           description: err.message || 'Không thể xóa thủ tục',
         })
+        // Reload to restore original state
+        loadDocuments()
       }
     }
-  }, [loadDocuments])
+  }, [loadDocuments, addOptimisticAction])
 
   // Filter handlers
   const handleCategoryChange = useCallback((value: string) => {
@@ -222,19 +250,19 @@ export function useTaiLieu() {
 
   // Computed values
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0
-  const hasData = data && data.items.length > 0
+  const hasData = optimisticItems.length > 0
   const canGoPrevious = page > 0
   const canGoNext = data ? page < totalPages - 1 : false
 
   return {
-    // State
-    data,
+    // State - use optimisticItems for instant UI feedback
+    data: data ? { ...data, items: optimisticItems } : null,
     loading,
     error,
     search,
     category,
     page,
-    
+
     // Dialog state
     dialogOpen,
     setDialogOpen,
@@ -244,13 +272,13 @@ export function useTaiLieu() {
     detailOpen,
     setDetailOpen,
     selectedDoc,
-    
+
     // Computed
     totalPages,
     hasData,
     canGoPrevious,
     canGoNext,
-    
+
     // Actions
     loadDocuments,
     handleCreate,

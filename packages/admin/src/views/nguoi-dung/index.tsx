@@ -1,11 +1,11 @@
 /**
  * Users Management Page
  * List, search, filter and view user details
+ *
+ * Note: Business logic has been extracted to useNguoiDung.ts hook
+ * This component only handles UI rendering
  */
 
-import { useEffect, useState, useMemo } from 'react'
-import { UserController } from '@/domains/user/controllers/user.controller'
-import type { ListUsersParams, UpdateUserRequest } from '@/api/user.api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -48,42 +48,13 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { TableSkeleton } from '@/components/ui/skeleton'
-
-// ============================================
-// TYPES
-// ============================================
-
-interface User {
-  id: string
-  name: string
-  email: string | null
-  phoneNumber: string | null
-  avatarUrl: string | null
-  role: 'admin' | 'staff' | 'citizen'
-  isActive: boolean
-  wardId: string | null
-  ward?: {
-    id: string
-    name: string
-    code: string
-  } | null
-  createdAt: string
-  updatedAt: string
-}
-
-interface UsersResponse {
-  items: User[]
-  total: number
-  limit: number
-  offset: number
-  hasMore: boolean
-}
-
-type UserRole = 'all' | 'admin' | 'staff' | 'citizen'
+import { useNguoiDung } from './useNguoiDung'
 
 // ============================================
 // CONSTANTS
 // ============================================
+
+type UserRole = 'all' | 'admin' | 'staff' | 'citizen'
 
 const ROLES: { value: UserRole; label: string }[] = [
   { value: 'all', label: 'Tất cả vai trò' },
@@ -105,98 +76,35 @@ const PAGE_SIZE = 10
 // ============================================
 
 export default function NguoiDung() {
-  const controller = useMemo(() => new UserController(), [])
-
-  // State
-  const [users, setUsers] = useState<User[]>([])
-  const [total, setTotal] = useState(0)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  // Filters
-  const [search, setSearch] = useState('')
-  const [role, setRole] = useState<UserRole>('all')
-  const [page, setPage] = useState(1)
-
-  // Debounced search
-  const [debouncedSearch, setDebouncedSearch] = useState('')
-
-  // Detail dialog
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  const [isDetailOpen, setIsDetailOpen] = useState(false)
-
-  // Edit dialog
-  const [isEditOpen, setIsEditOpen] = useState(false)
-  const [editForm, setEditForm] = useState<UpdateUserRequest>({})
-  const [isUpdating, setIsUpdating] = useState(false)
-
-  // Debounce search input
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search)
-      setPage(1)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [search])
-
-  // Load users
-  useEffect(() => {
-    loadUsers()
-  }, [debouncedSearch, role, page])
-
-  const loadUsers = async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const params: ListUsersParams = {
-        limit: PAGE_SIZE,
-        offset: (page - 1) * PAGE_SIZE,
-      }
-      if (debouncedSearch) params.search = debouncedSearch
-      if (role !== 'all') params.role = role
-
-      const response: UsersResponse = await controller.listUsers(params)
-      setUsers(response.items || [])
-      setTotal(response.total || 0)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể tải danh sách người dùng')
-      setUsers([])
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleViewDetail = (user: User) => {
-    setSelectedUser(user)
-    setIsDetailOpen(true)
-  }
-
-  const handleOpenEdit = (user: User) => {
-    setSelectedUser(user)
-    setEditForm({
-      name: user.name,
-      role: user.role,
-      isActive: user.isActive,
-      phoneNumber: user.phoneNumber || undefined,
-    })
-    setIsEditOpen(true)
-  }
-
-  const handleUpdateUser = async () => {
-    if (!selectedUser) return
-    setIsUpdating(true)
-    try {
-      await controller.updateUser(selectedUser.id, editForm)
-      setIsEditOpen(false)
-      loadUsers()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể cập nhật người dùng')
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-
-  const totalPages = Math.ceil(total / PAGE_SIZE)
+  // Get all state and actions from custom hook
+  const {
+    users,
+    total,
+    isLoading,
+    error,
+    search,
+    roleFilter,
+    page,
+    detailOpen,
+    setDetailOpen,
+    editOpen,
+    setEditOpen,
+    selectedUser,
+    editFormData,
+    isSaving,
+    totalPages,
+    canGoPrevious,
+    canGoNext,
+    loadUsers,
+    handleViewDetail,
+    handleEdit,
+    handleFormChange,
+    handleSave,
+    handleRoleFilterChange,
+    handleSearchChange,
+    handlePreviousPage,
+    handleNextPage,
+  } = useNguoiDung()
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN', {
@@ -229,11 +137,11 @@ export default function NguoiDung() {
           <Input
             placeholder="Tìm kiếm theo tên, email, SĐT..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-9"
           />
         </div>
-        <Select value={role} onValueChange={(v) => { setRole(v as UserRole); setPage(1) }}>
+        <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
           <SelectTrigger className="w-45">
             <SelectValue />
           </SelectTrigger>
@@ -281,7 +189,7 @@ export default function NguoiDung() {
               users.map((user, index) => (
                 <TableRow key={user.id} className="cursor-pointer hover:bg-gray-50" onClick={() => handleViewDetail(user)}>
                   <TableCell className="text-muted-foreground">
-                    {(page - 1) * PAGE_SIZE + index + 1}
+                    {page * PAGE_SIZE + index + 1}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -329,7 +237,7 @@ export default function NguoiDung() {
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleOpenEdit(user)
+                        handleEdit(user)
                       }}
                     >
                       <Edit className="w-4 h-4" />
@@ -345,25 +253,25 @@ export default function NguoiDung() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t">
             <span className="text-sm text-muted-foreground">
-              Hiển thị {(page - 1) * PAGE_SIZE + 1} - {Math.min(page * PAGE_SIZE, total)} / {total} người dùng
+              Hiển thị {page * PAGE_SIZE + 1} - {Math.min((page + 1) * PAGE_SIZE, total)} / {total} người dùng
             </span>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1 || isLoading}
+                onClick={handlePreviousPage}
+                disabled={!canGoPrevious || isLoading}
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <span className="text-sm min-w-20 text-center">
-                Trang {page} / {totalPages}
+                Trang {page + 1} / {totalPages}
               </span>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages || isLoading}
+                onClick={handleNextPage}
+                disabled={!canGoNext || isLoading}
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>
@@ -373,7 +281,7 @@ export default function NguoiDung() {
       </div>
 
       {/* Detail Dialog */}
-      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Thông tin người dùng</DialogTitle>
@@ -435,12 +343,12 @@ export default function NguoiDung() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
+            <Button variant="outline" onClick={() => setDetailOpen(false)}>
               Đóng
             </Button>
             <Button onClick={() => {
-              setIsDetailOpen(false)
-              if (selectedUser) handleOpenEdit(selectedUser)
+              setDetailOpen(false)
+              if (selectedUser) handleEdit(selectedUser)
             }}>
               <Edit className="w-4 h-4 mr-1" />
               Chỉnh sửa
@@ -450,7 +358,7 @@ export default function NguoiDung() {
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Chỉnh sửa người dùng</DialogTitle>
@@ -463,23 +371,15 @@ export default function NguoiDung() {
               <Label htmlFor="edit-name">Tên</Label>
               <Input
                 id="edit-name"
-                value={editForm.name || ''}
-                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-phone">Số điện thoại</Label>
-              <Input
-                id="edit-phone"
-                value={editForm.phoneNumber || ''}
-                onChange={(e) => setEditForm({ ...editForm, phoneNumber: e.target.value })}
+                value={editFormData.name || ''}
+                onChange={(e) => handleFormChange('name', e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <Label>Vai trò</Label>
               <Select
-                value={editForm.role}
-                onValueChange={(v) => setEditForm({ ...editForm, role: v })}
+                value={editFormData.role}
+                onValueChange={(v) => handleFormChange('role', v)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -491,25 +391,13 @@ export default function NguoiDung() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="edit-active"
-                checked={editForm.isActive ?? true}
-                onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
-                className="rounded"
-              />
-              <Label htmlFor="edit-active" className="cursor-pointer">
-                Tài khoản đang hoạt động
-              </Label>
-            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
               Hủy
             </Button>
-            <Button onClick={handleUpdateUser} disabled={isUpdating}>
-              {isUpdating ? (
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                   Đang lưu...

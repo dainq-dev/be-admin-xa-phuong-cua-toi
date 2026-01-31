@@ -2,16 +2,17 @@ import { z } from 'zod';
 import { NewsStatus } from '../constants/status';
 
 // Block Types
-export type NewsBlockType = 
-  | 'heading' 
-  | 'text' 
-  | 'image' 
-  | 'youtube' 
-  | 'carousel' 
-  | 'divider' 
-  | 'quote' 
-  | 'qr-code' 
-  | 'collapse';
+export type NewsBlockType =
+  | 'heading'
+  | 'text'
+  | 'image'
+  | 'youtube'
+  | 'carousel'
+  | 'divider'
+  | 'quote'
+  | 'qr-code'
+  | 'collapse'
+  | 'icon';
 
 export interface BaseBlock {
   id: string;
@@ -106,16 +107,16 @@ export interface QrCodeBlock extends BaseBlock {
   };
 }
 
-// export interface IconBlock extends BaseBlock {
-//   type: 'icon';
-//   iconName: string; // Lucide icon name
-//   settings: {
-//     size?: number;
-//     color?: string;
-//     align?: 'left' | 'center' | 'right';
-//     url?: string; // Optional link
-//   };
-// }
+export interface IconBlock extends BaseBlock {
+  type: 'icon';
+  iconName: string; // Lucide icon name
+  settings: {
+    size?: number;
+    color?: string;
+    align?: 'left' | 'center' | 'right';
+    url?: string; // Optional link
+  };
+}
 
 export interface CollapseBlock extends BaseBlock {
   type: 'collapse';
@@ -126,7 +127,7 @@ export interface CollapseBlock extends BaseBlock {
   };
 }
 
-export type NewsBlock = TextBlock | HeadingBlock | ImageBlock | YoutubeBlock | CarouselBlock | DividerBlock | QuoteBlock | QrCodeBlock |  CollapseBlock;
+export type NewsBlock = TextBlock | HeadingBlock | ImageBlock | YoutubeBlock | CarouselBlock | DividerBlock | QuoteBlock | QrCodeBlock | CollapseBlock | IconBlock;
 
 // News Types & Schemas
 export const CreateNewsSchema = z.object({
@@ -183,3 +184,4 @@ export interface ArticleListResponse {
 }
 
 export type ArticleResponse = News;
+export type Article = News; // Alias for compatibility

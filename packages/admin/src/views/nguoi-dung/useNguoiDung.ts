@@ -2,9 +2,10 @@
  * useNguoiDung Hook
  * Custom hook for Users List view - handles all business logic & state management
  * Including user list, detail dialog, edit dialog, and role management
+ * Uses useOptimistic for instant UI feedback on user updates
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useOptimistic } from 'react'
 import { UserController } from '@/domains/user/controllers/user.controller'
 import type { User } from '@phuong-xa/shared'
 import type { UpdateUserRequest } from '@/api/user.api'
@@ -19,12 +20,35 @@ interface UserListResponse {
   hasMore: boolean
 }
 
+// Optimistic reducer for user update
+type OptimisticAction = { type: 'update'; id: string; data: Partial<User> }
+
+function optimisticReducer(
+  state: User[],
+  action: OptimisticAction
+): User[] {
+  switch (action.type) {
+    case 'update':
+      return state.map((user) =>
+        user.id === action.id ? { ...user, ...action.data } : user
+      )
+    default:
+      return state
+  }
+}
+
 export function useNguoiDung() {
   // Data state
   const [users, setUsers] = useState<User[]>([])
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Optimistic state for users
+  const [optimisticUsers, addOptimisticAction] = useOptimistic(
+    users,
+    optimisticReducer
+  )
 
   // Filter state
   const [search, setSearch] = useState('')
@@ -104,9 +128,17 @@ export function useNguoiDung() {
     }))
   }, [])
 
-  // Handle save
+  // Handle save with optimistic update
   const handleSave = useCallback(async () => {
     if (!selectedUser) return
+
+    // Optimistically update user in UI immediately
+    addOptimisticAction({
+      type: 'update',
+      id: selectedUser.id,
+      data: editFormData as Partial<User>,
+    })
+    setEditOpen(false)
 
     setIsSaving(true)
     try {
@@ -116,7 +148,6 @@ export function useNguoiDung() {
         title: 'Thành công',
         description: 'Đã cập nhật thông tin người dùng',
       })
-      setEditOpen(false)
       loadUsers()
     } catch (err: any) {
       toast({
@@ -124,10 +155,12 @@ export function useNguoiDung() {
         title: 'Lỗi',
         description: err.message || 'Không thể cập nhật người dùng',
       })
+      // Reload to restore original state
+      loadUsers()
     } finally {
       setIsSaving(false)
     }
-  }, [selectedUser, editFormData, loadUsers])
+  }, [selectedUser, editFormData, loadUsers, addOptimisticAction])
 
   // Filter handlers
   const handleRoleFilterChange = useCallback((value: string) => {
@@ -153,20 +186,20 @@ export function useNguoiDung() {
 
   // Computed values
   const totalPages = Math.ceil(total / PAGE_SIZE)
-  const hasData = users.length > 0
+  const hasData = optimisticUsers.length > 0
   const canGoPrevious = page > 0
   const canGoNext = page < totalPages - 1
 
   return {
-    // State
-    users,
+    // State - use optimisticUsers for instant UI feedback
+    users: optimisticUsers,
     total,
     isLoading,
     error,
     search,
     roleFilter,
     page,
-    
+
     // Dialog state
     detailOpen,
     setDetailOpen,
@@ -175,13 +208,13 @@ export function useNguoiDung() {
     selectedUser,
     editFormData,
     isSaving,
-    
+
     // Computed
     totalPages,
     hasData,
     canGoPrevious,
     canGoNext,
-    
+
     // Actions
     loadUsers,
     handleViewDetail,

@@ -1,11 +1,12 @@
 /**
  * useTinTuc Hook
  * Custom hook for News List view - handles all business logic & state management
+ * Uses useOptimistic for instant UI feedback on delete actions
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useOptimistic } from 'react'
 import { NewsController } from '@/domains/news/controllers/news.controller'
-import type { ArticleListResponse } from '@phuong-xa/shared'
+import type { ArticleListResponse, Article } from '@phuong-xa/shared'
 import type { NewsCategory, NewsStatus, ListArticlesParams } from '@/api/news.api'
 import { toast } from '@/components/ui/toast'
 
@@ -13,11 +14,32 @@ const PAGE_SIZE = 10
 
 const newsController = new NewsController()
 
+// Optimistic reducer for delete action
+type OptimisticAction = { type: 'delete'; id: string }
+
+function optimisticReducer(
+  state: Article[],
+  action: OptimisticAction
+): Article[] {
+  switch (action.type) {
+    case 'delete':
+      return state.filter((item) => item.id !== action.id)
+    default:
+      return state
+  }
+}
+
 export function useTinTuc() {
   // Data state
   const [data, setData] = useState<ArticleListResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Optimistic state for items
+  const [optimisticItems, addOptimisticAction] = useOptimistic(
+    data?.items ?? [],
+    optimisticReducer
+  )
 
   // Filter state
   const [search, setSearch] = useState('')
@@ -69,9 +91,12 @@ export function useTinTuc() {
     loadNews()
   }, [loadNews])
 
-  // Delete article
+  // Delete article with optimistic update
   const handleDelete = useCallback(async (id: string) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa bài viết này?')) {
+      // Optimistically remove from UI immediately
+      addOptimisticAction({ type: 'delete', id })
+
       try {
         await newsController.deleteArticle(id)
         toast({
@@ -79,6 +104,7 @@ export function useTinTuc() {
           title: 'Thành công',
           description: 'Đã xóa bài viết',
         })
+        // Reload to sync with server
         loadNews()
       } catch (err: any) {
         toast({
@@ -86,9 +112,11 @@ export function useTinTuc() {
           title: 'Lỗi',
           description: err.message || 'Không thể xóa bài viết',
         })
+        // Reload to restore original state
+        loadNews()
       }
     }
-  }, [loadNews])
+  }, [loadNews, addOptimisticAction])
 
   // Filter change handlers
   const handleCategoryChange = useCallback((value: string) => {
@@ -118,26 +146,26 @@ export function useTinTuc() {
 
   // Computed values
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0
-  const hasData = data && data.items.length > 0
+  const hasData = optimisticItems.length > 0
   const canGoPrevious = page > 0
   const canGoNext = data ? page < totalPages - 1 : false
 
   return {
-    // State
-    data,
+    // State - use optimisticItems for instant UI feedback
+    data: data ? { ...data, items: optimisticItems } : null,
     loading,
     error,
     search,
     category,
     status,
     page,
-    
+
     // Computed
     totalPages,
     hasData,
     canGoPrevious,
     canGoNext,
-    
+
     // Actions
     loadNews,
     handleDelete,

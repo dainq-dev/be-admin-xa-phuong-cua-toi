@@ -1,10 +1,11 @@
 /**
- * useGopY Hook  
+ * useGopY Hook
  * Custom hook for Feedback List view - handles all business logic & state management
  * Including stats, filters, detail dialog, and status updates
+ * Uses useOptimistic for instant UI feedback on status updates
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useOptimistic } from 'react'
 import { FeedbackController } from '@/domains/feedback/controllers/feedback.controller'
 import type { ListFeedbackParams, UpdateFeedbackStatusRequest } from '@/api/feedback.api'
 import { toast } from '@/components/ui/toast'
@@ -44,12 +45,35 @@ interface FeedbackStats {
   rejected: number
 }
 
+// Optimistic reducer for status update
+type OptimisticAction = { type: 'updateStatus'; id: string; status: string }
+
+function optimisticReducer(
+  state: Feedback[],
+  action: OptimisticAction
+): Feedback[] {
+  switch (action.type) {
+    case 'updateStatus':
+      return state.map((item) =>
+        item.id === action.id ? { ...item, status: action.status } : item
+      )
+    default:
+      return state
+  }
+}
+
 export function useGopY() {
   // Data state
   const [data, setData] = useState<FeedbackListResponse | null>(null)
   const [stats, setStats] = useState<FeedbackStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Optimistic state for items
+  const [optimisticItems, addOptimisticAction] = useOptimistic(
+    data?.items ?? [],
+    optimisticReducer
+  )
 
   // Filter state
   const [search, setSearch] = useState('')
@@ -125,9 +149,13 @@ export function useGopY() {
     setDetailOpen(true)
   }, [])
 
-  // Handle status update
+  // Handle status update with optimistic update
   const handleUpdateStatus = useCallback(async () => {
     if (!selectedFeedback) return
+
+    // Optimistically update status in UI immediately
+    addOptimisticAction({ type: 'updateStatus', id: selectedFeedback.id, status: newStatus })
+    setDetailOpen(false)
 
     setIsUpdating(true)
     try {
@@ -141,7 +169,6 @@ export function useGopY() {
         title: 'Thành công',
         description: 'Đã cập nhật trạng thái góp ý',
       })
-      setDetailOpen(false)
       loadFeedback()
       loadStats()
     } catch (err: any) {
@@ -150,10 +177,12 @@ export function useGopY() {
         title: 'Lỗi',
         description: err.message || 'Không thể cập nhật trạng thái',
       })
+      // Reload to restore original state
+      loadFeedback()
     } finally {
       setIsUpdating(false)
     }
-  }, [selectedFeedback, newStatus, responseMessage, loadFeedback, loadStats])
+  }, [selectedFeedback, newStatus, responseMessage, loadFeedback, loadStats, addOptimisticAction])
 
   // Filter handlers
   const handleCategoryChange = useCallback((value: string) => {
@@ -183,13 +212,13 @@ export function useGopY() {
 
   // Computed values
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0
-  const hasData = data && data.items.length > 0
+  const hasData = optimisticItems.length > 0
   const canGoPrevious = page > 0
   const canGoNext = data ? page < totalPages - 1 : false
 
   return {
-    // State
-    data,
+    // State - use optimisticItems for instant UI feedback
+    data: data ? { ...data, items: optimisticItems } : null,
     stats,
     loading,
     error,
@@ -197,7 +226,7 @@ export function useGopY() {
     category,
     status,
     page,
-    
+
     // Dialog state
     detailOpen,
     setDetailOpen,
@@ -207,13 +236,13 @@ export function useGopY() {
     responseMessage,
     setResponseMessage,
     isUpdating,
-    
+
     // Computed
     totalPages,
     hasData,
     canGoPrevious,
     canGoNext,
-    
+
     // Actions
     loadFeedback,
     loadStats,

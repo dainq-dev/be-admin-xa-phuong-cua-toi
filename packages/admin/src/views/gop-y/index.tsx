@@ -1,7 +1,7 @@
 /**
  * Feedback List View
  * Manage citizen feedback and complaints
- * 
+ *
  * Note: Business logic has been extracted to useGopY.ts hook
  * This component only handles UI rendering
  */
@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/card'
 import { Search, Eye, ChevronLeft, ChevronRight, Loader2, MessageSquare, Clock, CheckCircle, XCircle, AlertTriangle, User } from 'lucide-react'
 import { TableSkeleton } from '@/components/ui/skeleton'
-import { useGopY, type Feedback, type FeedbackStats } from './useGopY'
+import { useGopY } from './useGopY'
 
 // Constants
 const CATEGORIES = [
@@ -105,8 +105,6 @@ export default function GopY() {
     setResponseMessage,
     isUpdating,
     totalPages,
-    canGoPrevious,
-    canGoNext,
     handleViewDetail,
     handleUpdateStatus,
     handleCategoryChange,
@@ -115,82 +113,6 @@ export default function GopY() {
     handlePreviousPage,
     handleNextPage,
   } = useGopY()
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearchDebounced(search)
-      setPage(0)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [search])
-
-  const loadFeedback = useCallback(async () => {
-    try {
-      setLoading(true)
-      const params: ListFeedbackParams = {
-        limit: PAGE_SIZE,
-        offset: page * PAGE_SIZE,
-      }
-      if (category !== 'all') params.category = category
-      if (status !== 'all') params.status = status
-
-      const result = await feedbackController.listFeedback(params)
-      setData(result)
-      setError(null)
-    } catch (err: any) {
-      setError(err.message || 'Không thể tải danh sách phản ánh')
-    } finally {
-      setLoading(false)
-    }
-  }, [page, category, status])
-
-  const loadStats = async () => {
-    try {
-      const result = await feedbackController.getStats()
-      setStats(result)
-    } catch (err) {
-      console.error('Failed to load stats:', err)
-    }
-  }
-
-  useEffect(() => {
-    loadFeedback()
-  }, [loadFeedback])
-
-  useEffect(() => {
-    loadStats()
-  }, [])
-
-  const handleViewDetail = (feedback: Feedback) => {
-    setSelectedFeedback(feedback)
-    setNewStatus(feedback.status)
-    setResponseMessage(feedback.responseMessage || '')
-    setDetailOpen(true)
-  }
-
-  const handleUpdateStatus = async () => {
-    if (!selectedFeedback || !newStatus) return
-
-    setIsUpdating(true)
-    try {
-      const updateData: UpdateFeedbackStatusRequest = {
-        status: newStatus,
-      }
-      if (responseMessage.trim()) {
-        updateData.responseMessage = responseMessage
-      }
-      await feedbackController.updateStatus(selectedFeedback.id, updateData)
-      setDetailOpen(false)
-      loadFeedback()
-      loadStats()
-    } catch (err: any) {
-      alert(err.message)
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-
-  const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0
 
   return (
     <div className="space-y-6">
@@ -270,11 +192,11 @@ export default function GopY() {
           <Input
             placeholder="Tìm kiếm..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-9"
           />
         </div>
-        <Select value={category} onValueChange={(v) => { setCategory(v); setPage(0) }}>
+        <Select value={category} onValueChange={handleCategoryChange}>
           <SelectTrigger className="w-45">
             <SelectValue />
           </SelectTrigger>
@@ -286,7 +208,7 @@ export default function GopY() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(0) }}>
+        <Select value={status} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-45">
             <SelectValue />
           </SelectTrigger>
@@ -387,7 +309,7 @@ export default function GopY() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setPage(page - 1)}
+              onClick={handlePreviousPage}
               disabled={page === 0}
             >
               <ChevronLeft className="w-4 h-4 mr-1" />
@@ -399,7 +321,7 @@ export default function GopY() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setPage(page + 1)}
+              onClick={handleNextPage}
               disabled={!data.hasMore}
             >
               Sau

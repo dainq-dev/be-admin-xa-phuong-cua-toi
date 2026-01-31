@@ -27,7 +27,7 @@ export const Header: FC = () => {
         <div className="flex items-center gap-8">
           <div className="hidden sm:flex items-center gap-3">
             <span className="text-md text-white">
-              Xin chào,
+              Xin chào đồng chí,
               <strong className="ml-3 text-red-700">
                 {user?.name || "Admin"}
               </strong>

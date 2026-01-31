@@ -116,7 +116,7 @@ export class AuthService {
     const user = await this.userRepository.findByEmail(input.email)
 
     if (!user) {
-      throw new Error('User not found')
+      throw new Error('Không tìm thấy thông tin quản trị viên')
     }
 
     if (!['admin', 'staff'].includes(user.role)) {

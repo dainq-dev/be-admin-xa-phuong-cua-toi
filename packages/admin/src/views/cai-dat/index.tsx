@@ -1,15 +1,13 @@
 /**
  * Settings Page
  * Ward info, user profile, and theme customization
+ *
+ * Note: Business logic has been extracted to useCaiDat.ts hook
+ * This component only handles UI rendering
  */
 
-import { useEffect, useState, useMemo } from 'react'
-import { useAuthStore } from '@/stores/auth.store'
-import { WardController } from '@/domains/ward/controllers/ward.controller'
-import { AuthController } from '@/domains/auth/controllers/auth.controller'
-import type { UpdateSettingsRequest, UserSettings, ThemeType, LanguageType } from '@phuong-xa/shared'
+import type { ThemeType, LanguageType } from '@phuong-xa/shared'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -42,27 +40,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { CardSkeleton } from '@/components/ui/skeleton'
-
-// ============================================
-// TYPES
-// ============================================
-
-interface Ward {
-  id: string
-  name: string
-  code: string
-  districtName?: string
-  provinceName?: string
-  population?: number
-  createdAt?: string
-}
-
-interface Feature {
-  key: string
-  name: string
-  description: string
-  isEnabled: boolean
-}
+import { useCaiDat } from './useCaiDat'
 
 // ============================================
 // CONSTANTS
@@ -90,111 +68,22 @@ const ROLE_LABELS: Record<string, string> = {
 // ============================================
 
 export default function CaiDat() {
-  const { user } = useAuthStore()
-  const wardController = useMemo(() => new WardController(), [])
-  const authController = useMemo(() => new AuthController(), [])
-
-  // State
-  const [ward, setWard] = useState<Ward | null>(null)
-  const [settings, setSettings] = useState<UserSettings | null>(null)
-  const [features, setFeatures] = useState<Feature[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
-
-  // Settings form
-  const [settingsForm, setSettingsForm] = useState<UpdateSettingsRequest>({
-    theme: 'system',
-    language: 'vi',
-    notificationsEnabled: true,
-    feedbackUpdates: true,
-    newsAlerts: true,
-    emergencyAlerts: true,
-  })
-
-  // Load data
-  useEffect(() => {
-    loadData()
-  }, [user])
-
-  const loadData = async () => {
-    if (!user) return
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      // Load ward info if user has wardId
-      if (user.wardId) {
-        try {
-          const wardData = await wardController.getWard(user.wardId)
-          setWard(wardData)
-        } catch {
-          // Ward info is optional
-        }
-
-        // Load features
-        try {
-          const featuresData = await wardController.getFeatures(user.wardId)
-          setFeatures(featuresData.features || [])
-        } catch {
-          // Features are optional
-        }
-      }
-
-      // Load user settings
-      try {
-        const settingsData = await authController.getSettings()
-        setSettings(settingsData)
-        setSettingsForm({
-          theme: settingsData.theme,
-          language: settingsData.language,
-          notificationsEnabled: settingsData.notificationsEnabled,
-          feedbackUpdates: settingsData.feedbackUpdates,
-          newsAlerts: settingsData.newsAlerts,
-          emergencyAlerts: settingsData.emergencyAlerts,
-        })
-      } catch {
-        // Settings might not exist yet, use defaults
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể tải cài đặt')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleSaveSettings = async () => {
-    setIsSaving(true)
-    setError(null)
-    setSuccessMessage(null)
-
-    try {
-      await authController.updateSettings(settingsForm)
-      setSuccessMessage('Đã lưu cài đặt thành công!')
-      setTimeout(() => setSuccessMessage(null), 3000)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể lưu cài đặt')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handleToggleFeature = async (featureKey: string, isEnabled: boolean) => {
-    if (!user?.wardId) return
-
-    try {
-      await wardController.updateFeature(user.wardId, {
-        featureKey,
-        isEnabled,
-      })
-      setFeatures(features.map(f =>
-        f.key === featureKey ? { ...f, isEnabled } : f
-      ))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể cập nhật tính năng')
-    }
-  }
+  // Get all state and actions from custom hook
+  const {
+    user,
+    ward,
+    features,
+    isLoading,
+    isSaving,
+    error,
+    settingsForm,
+    loadData,
+    handleSaveSettings,
+    handleToggleFeature,
+    handleThemeChange,
+    handleLanguageChange,
+    handleNotificationToggle,
+  } = useCaiDat()
 
   if (isLoading) {
     return (
@@ -226,15 +115,10 @@ export default function CaiDat() {
         </Button>
       </div>
 
-      {/* Messages */}
+      {/* Error */}
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
           {error}
-        </div>
-      )}
-      {successMessage && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm">
-          {successMessage}
         </div>
       )}
 
@@ -359,7 +243,7 @@ export default function CaiDat() {
                 <Label>Chủ đề</Label>
                 <Select
                   value={settingsForm.theme}
-                  onValueChange={(v) => setSettingsForm({ ...settingsForm, theme: v as ThemeType })}
+                  onValueChange={(v) => handleThemeChange(v as ThemeType)}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -377,7 +261,7 @@ export default function CaiDat() {
                 <Label>Ngôn ngữ</Label>
                 <Select
                   value={settingsForm.language}
-                  onValueChange={(v) => setSettingsForm({ ...settingsForm, language: v as LanguageType })}
+                  onValueChange={(v) => handleLanguageChange(v as LanguageType)}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -419,7 +303,7 @@ export default function CaiDat() {
                 <input
                   type="checkbox"
                   checked={settingsForm.notificationsEnabled}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, notificationsEnabled: e.target.checked })}
+                  onChange={(e) => handleNotificationToggle('notificationsEnabled', e.target.checked)}
                   className="rounded"
                 />
               </label>
@@ -435,7 +319,7 @@ export default function CaiDat() {
                 <input
                   type="checkbox"
                   checked={settingsForm.feedbackUpdates}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, feedbackUpdates: e.target.checked })}
+                  onChange={(e) => handleNotificationToggle('feedbackUpdates', e.target.checked)}
                   className="rounded"
                 />
               </label>
@@ -451,7 +335,7 @@ export default function CaiDat() {
                 <input
                   type="checkbox"
                   checked={settingsForm.newsAlerts}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, newsAlerts: e.target.checked })}
+                  onChange={(e) => handleNotificationToggle('newsAlerts', e.target.checked)}
                   className="rounded"
                 />
               </label>
@@ -467,7 +351,7 @@ export default function CaiDat() {
                 <input
                   type="checkbox"
                   checked={settingsForm.emergencyAlerts}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, emergencyAlerts: e.target.checked })}
+                  onChange={(e) => handleNotificationToggle('emergencyAlerts', e.target.checked)}
                   className="rounded"
                 />
               </label>
